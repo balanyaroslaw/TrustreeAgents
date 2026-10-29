@@ -1,8 +1,11 @@
 import { Command, CommandRunner, Option } from 'nest-commander';
-
-export interface HistoryCommandOptions {
-  limit: number;
-}
+import {
+  DEFAULT_HISTORY_LIMIT,
+  HISTORY_NOT_IMPLEMENTED_MESSAGE,
+  INVALID_ARGUMENT_EXIT_CODE,
+  INVALID_LIMIT_MESSAGE,
+} from './cli.constants';
+import type { HistoryCommandOptions } from './command-options.types';
 
 @Command({
   name: 'history',
@@ -12,17 +15,17 @@ export class HistoryCommand extends CommandRunner {
   async run(_inputs: string[], options: HistoryCommandOptions): Promise<void> {
     const { limit } = options;
     if (!Number.isInteger(limit) || limit <= 0) {
-      console.error('error: --limit must be a positive integer');
-      process.exit(1);
+      console.error(INVALID_LIMIT_MESSAGE);
+      process.exit(INVALID_ARGUMENT_EXIT_CODE);
     }
 
-    console.log('history: not implemented yet');
+    console.log(HISTORY_NOT_IMPLEMENTED_MESSAGE);
   }
 
   @Option({
     flags: '--limit <n>',
     description: 'maximum number of entries to show (positive integer)',
-    defaultValue: 10,
+    defaultValue: DEFAULT_HISTORY_LIMIT,
   })
   parseLimit(value: string): number {
     return Number(value);

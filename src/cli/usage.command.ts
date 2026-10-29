@@ -1,8 +1,6 @@
 import { Command, CommandRunner, Option } from 'nest-commander';
-
-export interface UsageCommandOptions {
-  run?: string;
-}
+import { USAGE_NOT_IMPLEMENTED_MESSAGE } from './cli.constants';
+import type { UsageCommandOptions } from './command-options.types';
 
 @Command({
   name: 'usage',
@@ -10,7 +8,7 @@ export interface UsageCommandOptions {
 })
 export class UsageCommand extends CommandRunner {
   async run(_inputs: string[], _options: UsageCommandOptions): Promise<void> {
-    console.log('usage: not implemented yet');
+    console.log(USAGE_NOT_IMPLEMENTED_MESSAGE);
   }
 
   @Option({

@@ -1,15 +1,12 @@
-import { isAbsolute, resolve } from 'node:path';
 import { Command, CommandRunner, Option } from 'nest-commander';
-
-export interface RunCommandOptions {
-  workspace: string;
-  tui: boolean;
-}
-
-export function resolveWorkspace(workspace?: string, cwd: string = process.cwd()): string {
-  const candidate = workspace?.trim() ? workspace.trim() : '.';
-  return isAbsolute(candidate) ? resolve(candidate) : resolve(cwd, candidate);
-}
+import {
+  DEFAULT_WORKSPACE_PATH,
+  INVALID_ARGUMENT_EXIT_CODE,
+  MISSING_PROMPT_MESSAGE,
+  RUN_NOT_IMPLEMENTED_MESSAGE,
+} from './cli.constants';
+import type { RunCommandOptions } from './command-options.types';
+import { WorkspacePathResolver } from './workspace-path.resolver';
 
 @Command({
   name: 'run',
@@ -23,20 +20,20 @@ export class RunCommand extends CommandRunner {
   async run(inputs: string[], options: RunCommandOptions): Promise<void> {
     const prompt = inputs[0]?.trim();
     if (!prompt) {
-      console.error('error: missing prompt argument. Usage: team run "<prompt>" [-w <path>]');
-      process.exit(1);
+      console.error(MISSING_PROMPT_MESSAGE);
+      process.exit(INVALID_ARGUMENT_EXIT_CODE);
     }
 
     console.log(`prompt: ${prompt}`);
-    console.log(`workspace: ${resolveWorkspace(options.workspace)}`);
+    console.log(`workspace: ${WorkspacePathResolver.toAbsolute(options.workspace)}`);
     console.log(`tui: ${options.tui ? 'enabled' : 'disabled'}`);
-    console.log('run: not implemented yet');
+    console.log(RUN_NOT_IMPLEMENTED_MESSAGE);
   }
 
   @Option({
     flags: '-w, --workspace <path>',
     description: 'workspace directory the agents work in',
-    defaultValue: '.',
+    defaultValue: DEFAULT_WORKSPACE_PATH,
   })
   parseWorkspace(value: string): string {
     return value;

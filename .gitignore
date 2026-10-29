@@ -3,6 +3,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Temp files from atomic writes (write_file)
+*.tmp
+
 # Secrets — never commit (CLAUDE.md hard rule 2)
 .env
 .env.local
