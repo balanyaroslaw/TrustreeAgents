@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Secrets — never commit (CLAUDE.md hard rule 2)
+.env
+.env.local
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+npm-debug.log*
