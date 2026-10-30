@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APPROVAL_GATE } from './approval/approval.constants';
+import { LoggingApprovalGate } from './approval/logging-approval-gate';
+import { CommandLock } from './commands/command.lock';
 import { GitService } from './git/git.service';
 import { FileToolRegistry } from './tools/file-tool.registry';
 import { DeleteFileService } from './tools/delete-file/delete-file.service';
@@ -20,6 +23,12 @@ import { ReadFileTool } from './tools/read-file/read-file.tool';
 import { ReadFileValidator } from './tools/read-file/read-file.validator';
 import { WriteFileService } from './tools/write-file/write-file.service';
 import { WriteFileTool } from './tools/write-file/write-file.tool';
+import { RunCommandService } from './tools/run-command/run-command.service';
+import { RunCommandTool } from './tools/run-command/run-command.tool';
+import { RunCommandValidator } from './tools/run-command/run-command.validator';
+import { SearchCodeService } from './tools/search-code/search-code.service';
+import { SearchCodeTool } from './tools/search-code/search-code.tool';
+import { SearchCodeValidator } from './tools/search-code/search-code.validator';
 import { WriteFileValidator } from './tools/write-file/write-file.validator';
 import { WORKSPACE_ROOT } from './workspace.constants';
 import { WorkspaceService } from './workspace.service';
@@ -49,6 +58,14 @@ import { WorkspaceService } from './workspace.service';
     GitDiffValidator,
     GitDiffService,
     GitDiffTool,
+    SearchCodeValidator,
+    SearchCodeService,
+    SearchCodeTool,
+    CommandLock,
+    { provide: APPROVAL_GATE, useClass: LoggingApprovalGate },
+    RunCommandValidator,
+    RunCommandService,
+    RunCommandTool,
     FileToolRegistry,
   ],
   exports: [WorkspaceService, GitService, FileToolRegistry],

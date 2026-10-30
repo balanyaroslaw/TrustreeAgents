@@ -6,4 +6,6 @@ export enum FileToolName {
   DeleteFile = 'delete_file',
   GitStatus = 'git_status',
   GitDiff = 'git_diff',
+  SearchCode = 'search_code',
+  RunCommand = 'run_command',
 }

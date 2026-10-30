@@ -23,7 +23,9 @@ export const AGENT_DEFINITIONS: Readonly<Record<AgentRole.Developer, AgentDefini
       'Make the smallest change that satisfies the task. Use edit_file for existing files and ' +
         'write_file for new files. Use delete_file only for files made obsolete by your change.',
       'Check your work: call git_status and git_diff (mode "stat", then "full" for the files ' +
-        'you changed) and make sure the changes are exactly what you intended.',
+        'you changed) and make sure the changes are exactly what you intended. If the project ' +
+        'has a build or type-check script, run it and fix errors. Running the full test suite ' +
+        'is the job of QA.',
       'Finish with the structured final answer.',
     ],
     rules: [
@@ -56,6 +58,8 @@ export const AGENT_DEFINITIONS: Readonly<Record<AgentRole.Developer, AgentDefini
       FileToolName.DeleteFile,
       FileToolName.GitStatus,
       FileToolName.GitDiff,
+      FileToolName.SearchCode,
+      FileToolName.RunCommand,
     ],
     maxTurns: DEVELOPER_MAX_TURNS,
   },

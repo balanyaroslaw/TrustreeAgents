@@ -2,9 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { GitError } from '../errors/git.error';
 import { WorkspaceService } from '../workspace.service';
+import { SKIPPED_NAMES } from '../workspace.constants';
 import {
   COPY_STATUS_CODE,
   DEV_NULL_PATH,
+  GIT_ANY_DIRECTORY_GLOB,
+  GIT_EXCLUDE_GLOB_PATHSPEC_PREFIX,
+  GIT_GLOB_PATHSPEC_PREFIX,
   GIT_BASE_ARGS,
   GIT_BINARY,
   GIT_EXCLUDE_PATHSPEC_PREFIX,
@@ -14,10 +18,12 @@ import {
   GIT_TIMEOUT_MS,
   RENAME_STATUS_CODE,
 } from './git.constants';
-import type { GitCommandResult, GitStatusEntry } from './git.types';
+import { SEARCH_TIMEOUT_MS } from '../tools/file-tool.constants';
+import type { GitCommandResult, GitGrepRequest, GitStatusEntry } from './git.types';
 
 const SUCCESS_EXIT_CODE = 0;
 const DIFFERENCES_EXIT_CODE = 1;
+const NO_MATCH_EXIT_CODE = 1;
 const FATAL_EXIT_CODE = 128;
 const INSIDE_WORK_TREE_OUTPUT = 'true';
 const STATUS_INDEX_INDEX = 0;
@@ -141,6 +147,23 @@ export class GitService {
     return result.exitCode === SUCCESS_EXIT_CODE;
   }
 
+  async grep(request: GitGrepRequest): Promise<string> {
+    const { pattern, literal, caseSensitive, contextLines } = request;
+
+    const args = ['grep', '--no-color', '-n', '-I', '--untracked', '--null'];
+    if (!caseSensitive) {
+      args.push('-i');
+    }
+    args.push(literal ? '-F' : '-E');
+    if (contextLines > 0) {
+      args.push('-C', String(contextLines));
+    }
+    args.push('-e', pattern, GIT_PATH_TERMINATOR, ...GitService.grepPathspecs(request));
+
+    const result = await this.run(args, [NO_MATCH_EXIT_CODE], SEARCH_TIMEOUT_MS);
+    return result.stdout;
+  }
+
   async resolveCommit(ref: string): Promise<string | null> {
     const result = await this.run(
       ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`],
@@ -153,8 +176,9 @@ export class GitService {
   private async run(
     args: readonly string[],
     allowedExitCodes: readonly number[] = [],
+    timeoutMs: number = GIT_TIMEOUT_MS,
   ): Promise<GitCommandResult> {
-    const result = await this.execute(args);
+    const result = await this.execute(args, timeoutMs);
     if (
       result.exitCode === SUCCESS_EXIT_CODE ||
       (result.exitCode !== null && allowedExitCodes.includes(result.exitCode))
@@ -167,14 +191,14 @@ export class GitService {
     throw GitError.fromStderr(args[SUBCOMMAND_INDEX], result.stderr);
   }
 
-  private execute(args: readonly string[]): Promise<GitCommandResult> {
+  private execute(args: readonly string[], timeoutMs: number): Promise<GitCommandResult> {
     return new Promise((resolve) => {
       execFile(
         GIT_BINARY,
         [...GIT_BASE_ARGS, ...args],
         {
           cwd: this.workspace.root,
-          timeout: GIT_TIMEOUT_MS,
+          timeout: timeoutMs,
           maxBuffer: GIT_MAX_BUFFER_BYTES,
           encoding: 'utf8',
           env: GitService.childEnvironment(),
@@ -202,6 +226,27 @@ export class GitService {
       LC_ALL: 'C',
       GIT_TERMINAL_PROMPT: '0',
     };
+  }
+
+  private static grepPathspecs(request: GitGrepRequest): string[] {
+    const { relativePath, glob } = request;
+    const specs: string[] = [];
+
+    if (glob !== undefined) {
+      const prefix = relativePath === undefined ? '' : `${relativePath}/`;
+      specs.push(`${GIT_GLOB_PATHSPEC_PREFIX}${prefix}${GIT_ANY_DIRECTORY_GLOB}/${glob}`);
+    } else if (relativePath !== undefined) {
+      specs.push(relativePath);
+    }
+
+    for (const name of SKIPPED_NAMES) {
+      specs.push(
+        `${GIT_EXCLUDE_GLOB_PATHSPEC_PREFIX}${GIT_ANY_DIRECTORY_GLOB}/${name}/` +
+          GIT_ANY_DIRECTORY_GLOB,
+      );
+    }
+
+    return specs;
   }
 
   private static pathspecs(relativePath?: string, excludes: readonly string[] = []): string[] {

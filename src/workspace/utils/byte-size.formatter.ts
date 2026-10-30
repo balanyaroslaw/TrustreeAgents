@@ -1,11 +1,15 @@
 const BYTES_PER_KILOBYTE = 1024;
-const KILOBYTE_FRACTION_DIGITS = 1;
+const BYTES_PER_MEGABYTE = 1024 * 1024;
+const FRACTION_DIGITS = 1;
 
 export class ByteSizeFormatter {
   static format(bytes: number): string {
     if (bytes < BYTES_PER_KILOBYTE) {
       return `${bytes} B`;
     }
-    return `${(bytes / BYTES_PER_KILOBYTE).toFixed(KILOBYTE_FRACTION_DIGITS)} KB`;
+    if (bytes < BYTES_PER_MEGABYTE) {
+      return `${(bytes / BYTES_PER_KILOBYTE).toFixed(FRACTION_DIGITS)} KB`;
+    }
+    return `${(bytes / BYTES_PER_MEGABYTE).toFixed(FRACTION_DIGITS)} MB`;
   }
 }

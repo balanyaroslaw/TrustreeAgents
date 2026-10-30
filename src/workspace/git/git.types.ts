@@ -11,3 +11,12 @@ export interface GitStatusEntry {
   readonly path: string;
   readonly originalPath: string | null;
 }
+
+export interface GitGrepRequest {
+  readonly pattern: string;
+  readonly literal: boolean;
+  readonly caseSensitive: boolean;
+  readonly contextLines: number;
+  readonly relativePath?: string;
+  readonly glob?: string;
+}

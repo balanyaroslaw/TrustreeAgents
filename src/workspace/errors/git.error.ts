@@ -1,6 +1,8 @@
 import { GitErrorReason } from '../enums/git-error-reason.enum';
 import {
   GIT_TIMEOUT_MESSAGE,
+  INVALID_PATTERN_MESSAGE,
+  INVALID_PATTERN_STDERR_MARKERS,
   GIT_UNAVAILABLE_MESSAGE,
   NOT_A_GIT_REPOSITORY_MESSAGE,
   NOT_A_REPOSITORY_STDERR_MARKER,
@@ -29,9 +31,17 @@ export class GitError extends Error {
     return new GitError(GIT_TIMEOUT_MESSAGE, GitErrorReason.CommandFailed);
   }
 
+  static invalidPattern(): GitError {
+    return new GitError(INVALID_PATTERN_MESSAGE, GitErrorReason.InvalidPattern);
+  }
+
   static fromStderr(subcommand: string, stderr: string): GitError {
-    if (stderr.toLowerCase().includes(NOT_A_REPOSITORY_STDERR_MARKER)) {
+    const lowered = stderr.toLowerCase();
+    if (lowered.includes(NOT_A_REPOSITORY_STDERR_MARKER)) {
       return GitError.notARepository();
+    }
+    if (INVALID_PATTERN_STDERR_MARKERS.some((marker) => lowered.includes(marker))) {
+      return GitError.invalidPattern();
     }
     return new GitError(
       `git ${subcommand} failed: ${GitError.firstLine(stderr)}`,

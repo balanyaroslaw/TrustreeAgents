@@ -1,0 +1,1 @@
+export const APPROVAL_GATE = 'APPROVAL_GATE';

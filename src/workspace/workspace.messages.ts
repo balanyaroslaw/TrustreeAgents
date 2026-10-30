@@ -1,3 +1,5 @@
+import { DurationFormatter } from '../agents/utils/duration.formatter';
+import { ALLOWED_EXECUTABLES, GIT_COMMAND_HINT } from './commands/command-policy.constants';
 import { ByteSizeFormatter } from './utils/byte-size.formatter';
 import type { GitChangeKind } from './git/git-change-kind.enum';
 import { ERROR_PREFIX, MAX_READ_CHARACTERS, MAX_READ_LINES } from './tools/file-tool.constants';
@@ -271,5 +273,124 @@ export class WorkspaceMessages {
 
   static diffTruncated(remainingCharacters: number): string {
     return `[Truncated: ${remainingCharacters} more characters. Request a specific path]`;
+  }
+
+  static pathNotFound(relativePath: string): string {
+    return `path not found: ${relativePath}. Use list_files to check the path`;
+  }
+
+  static invalidGlob(): string {
+    return (
+      'glob may only contain letters, digits and _ . / * ? { } [ ] , - , must not contain ".." ' +
+      'and must not start with "/". Example: "*.ts"'
+    );
+  }
+
+  static searchHeader(matches: number, files: number, pattern: string): string {
+    const matchLabel = matches === 1 ? 'match' : 'matches';
+    const fileLabel = files === 1 ? 'file' : 'files';
+    return `Found ${matches} ${matchLabel} in ${files} ${fileLabel} for "${pattern}":`;
+  }
+
+  static searchMatch(relativePath: string, lineNumber: number, text: string): string {
+    return `${relativePath}:${lineNumber}:${text}`;
+  }
+
+  static searchContext(relativePath: string, lineNumber: number, text: string): string {
+    return `${relativePath}-${lineNumber}-${text}`;
+  }
+
+  static searchTruncated(): string {
+    return '[Truncated: more matches exist. Narrow the search with path or glob.]';
+  }
+
+  static searchNoMatches(pattern: string, scope: string): string {
+    return (
+      `No matches for "${pattern}" in ${scope}. Try a shorter pattern or a different spelling ` +
+      '(search is case-insensitive unless caseSensitive is set)'
+    );
+  }
+
+  static shellSyntaxNotSupported(found: string): string {
+    return `shell syntax is not supported (found "${found}"). Run one command per call`;
+  }
+
+  static unbalancedQuote(): string {
+    return 'the command has an unbalanced quote. Close the quote or drop it';
+  }
+
+  static emptyCommand(): string {
+    return 'command must not be empty. Pass one command, for example "npm test"';
+  }
+
+  static gitCommandDenied(): string {
+    return `git commands are not allowed. ${GIT_COMMAND_HINT}`;
+  }
+
+  static executableNotAllowed(executable: string): string {
+    return `"${executable}" is not allowed. Allowed: ${ALLOWED_EXECUTABLES.join(', ')}`;
+  }
+
+  static deniedCommandFlag(flag: string): string {
+    return `the flag ${flag} is not allowed. Run the command without it`;
+  }
+
+  static argumentOutsideWorkspace(value: string): string {
+    return `"${value}" points outside the workspace. Use a path inside the workspace`;
+  }
+
+  static missingSubcommand(executable: string, hint: string): string {
+    return `"${executable}" needs a subcommand. ${hint}`;
+  }
+
+  static subcommandNotAllowed(executable: string, subcommand: string, hint: string): string {
+    return `"${executable} ${subcommand}" is not allowed. ${hint}`;
+  }
+
+  static localToolMissing(executable: string, hint: string): string {
+    return `"${executable}" is not installed in node_modules/.bin. ${hint}`;
+  }
+
+  static commandNotApproved(): string {
+    return 'the command was not approved by the user';
+  }
+
+  static commandTimedOut(timeoutMs: number, output: string): string {
+    return (
+      `command timed out after ${DurationFormatter.preciseSeconds(timeoutMs)} and was killed. ` +
+      `Output so far: ${output}`
+    );
+  }
+
+  static couldNotStartCommand(executable: string, reason: string): string {
+    return `could not start "${executable}": ${reason}`;
+  }
+
+  static commandResult(
+    displayCommand: string,
+    exitCode: number | null,
+    signal: string | null,
+    durationMs: number,
+    output: string,
+  ): string {
+    const status = exitCode === null ? `none (killed by ${signal ?? 'a signal'})` : `${exitCode}`;
+    return [
+      `$ ${displayCommand}`,
+      `exit code: ${status}, took ${DurationFormatter.preciseSeconds(durationMs)}`,
+      '--- output ---',
+      output === '' ? '(no output)' : output,
+    ].join('\n');
+  }
+
+  static outputCut(limitBytes: number): string {
+    return `[Output was cut: it exceeded ${ByteSizeFormatter.format(limitBytes)}]`;
+  }
+
+  static outputOmitted(characters: number): string {
+    return `[... ${characters} characters omitted ...]`;
+  }
+
+  static commandsNotSupportedOnWindows(): string {
+    return 'run_command is not supported on native Windows. Use WSL';
   }
 }

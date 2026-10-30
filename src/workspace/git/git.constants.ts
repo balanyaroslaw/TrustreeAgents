@@ -15,6 +15,9 @@ export const GIT_MAX_BUFFER_BYTES = 10 * 1024 * 1024;
 export const GIT_PATH_TERMINATOR = '--';
 export const GIT_NUL_SEPARATOR = '\0';
 export const GIT_EXCLUDE_PATHSPEC_PREFIX = ':(exclude)';
+export const GIT_EXCLUDE_GLOB_PATHSPEC_PREFIX = ':(exclude,glob)';
+export const GIT_GLOB_PATHSPEC_PREFIX = ':(glob)';
+export const GIT_ANY_DIRECTORY_GLOB = '**';
 export const DEV_NULL_PATH = '/dev/null';
 
 export const GIT_DEFAULT_BASE_REF = 'HEAD';
@@ -54,5 +57,14 @@ export const NOT_A_GIT_REPOSITORY_MESSAGE =
 export const GIT_UNAVAILABLE_MESSAGE =
   'git could not be run in the workspace. Check that git is installed';
 export const NOT_A_REPOSITORY_STDERR_MARKER = 'not a git repository';
+export const INVALID_PATTERN_STDERR_MARKERS: readonly string[] = [
+  'invalid regular expression',
+  'unmatched',
+  'trailing backslash',
+  'brackets',
+  'repetition-operator',
+];
+export const INVALID_PATTERN_MESSAGE =
+  'invalid regular expression. Fix the pattern or set literal to true';
 export const GIT_TIMEOUT_MESSAGE =
   'git took too long or produced too much output and was stopped. Request a specific path';

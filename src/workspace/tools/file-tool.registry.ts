@@ -9,6 +9,8 @@ import { GitDiffTool } from './git-diff/git-diff.tool';
 import { GitStatusTool } from './git-status/git-status.tool';
 import { ListFilesTool } from './list-files/list-files.tool';
 import { ReadFileTool } from './read-file/read-file.tool';
+import { RunCommandTool } from './run-command/run-command.tool';
+import { SearchCodeTool } from './search-code/search-code.tool';
 import { WriteFileTool } from './write-file/write-file.tool';
 
 @Injectable()
@@ -23,6 +25,8 @@ export class FileToolRegistry {
     deleteFileTool: DeleteFileTool,
     gitStatusTool: GitStatusTool,
     gitDiffTool: GitDiffTool,
+    searchCodeTool: SearchCodeTool,
+    runCommandTool: RunCommandTool,
   ) {
     this.tools = [
       readFileTool,
@@ -32,6 +36,8 @@ export class FileToolRegistry {
       deleteFileTool,
       gitStatusTool,
       gitDiffTool,
+      searchCodeTool,
+      runCommandTool,
     ];
   }
 
