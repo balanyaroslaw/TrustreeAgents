@@ -1,0 +1,58 @@
+import { GitChangeKind } from './git-change-kind.enum';
+
+export const GIT_BINARY = 'git';
+
+export const GIT_BASE_ARGS: readonly string[] = [
+  '-c',
+  'core.quotepath=false',
+  '-c',
+  'core.pager=cat',
+];
+
+export const GIT_TIMEOUT_MS = 30_000;
+export const GIT_MAX_BUFFER_BYTES = 10 * 1024 * 1024;
+
+export const GIT_PATH_TERMINATOR = '--';
+export const GIT_NUL_SEPARATOR = '\0';
+export const GIT_EXCLUDE_PATHSPEC_PREFIX = ':(exclude)';
+export const DEV_NULL_PATH = '/dev/null';
+
+export const GIT_DEFAULT_BASE_REF = 'HEAD';
+export const GIT_REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/~^@{}-]*$/;
+export const MAX_GIT_REF_LENGTH = 100;
+
+export const GIT_DIFF_EXCLUDED_PATHS: readonly string[] = [
+  'package-lock.json',
+  'yarn.lock',
+  'pnpm-lock.yaml',
+  '*.min.js',
+  'dist/**',
+];
+
+export const GIT_STATUS_GROUP_ORDER: readonly GitChangeKind[] = [
+  GitChangeKind.Modified,
+  GitChangeKind.Added,
+  GitChangeKind.Deleted,
+  GitChangeKind.Renamed,
+  GitChangeKind.Untracked,
+];
+
+export const MAX_STATUS_ENTRIES = 200;
+export const MAX_DIFF_CHARACTERS = 30_000;
+
+export const DIFF_FILE_HEADER_PREFIX = 'diff --git ';
+export const UNTRACKED_STATUS_CODE = '?';
+export const RENAME_STATUS_CODE = 'R';
+export const COPY_STATUS_CODE = 'C';
+export const ADDED_STATUS_CODE = 'A';
+export const DELETED_STATUS_CODE = 'D';
+
+export const DETACHED_HEAD_LABEL = 'detached HEAD';
+
+export const NOT_A_GIT_REPOSITORY_MESSAGE =
+  'workspace is not a git repository. Use list_files and read_file to inspect the workspace';
+export const GIT_UNAVAILABLE_MESSAGE =
+  'git could not be run in the workspace. Check that git is installed';
+export const NOT_A_REPOSITORY_STDERR_MARKER = 'not a git repository';
+export const GIT_TIMEOUT_MESSAGE =
+  'git took too long or produced too much output and was stopped. Request a specific path';

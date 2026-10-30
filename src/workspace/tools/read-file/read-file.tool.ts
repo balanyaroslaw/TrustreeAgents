@@ -3,16 +3,21 @@ import type { AgentTool } from '../../../agents/agent-tool.types';
 import { FileToolName } from '../../enums/file-tool-name.enum';
 import { ErrorInspector } from '../../utils/error.inspector';
 import { WorkspaceMessages } from '../../workspace.messages';
-import { READ_FILE_DESCRIPTION } from '../file-tool.constants';
+import { FILE_TOOL_DEFINITIONS } from '../file-tool.constants';
+import { ToolDefinitionRenderer } from '../tool-definition.renderer';
 import { readFileSchema } from './read-file.schema';
 import { ReadFileService } from './read-file.service';
 import { ReadFileValidator } from './read-file.validator';
 
+const DEFINITION = FILE_TOOL_DEFINITIONS[FileToolName.ReadFile];
+
 @Injectable()
 export class ReadFileTool implements AgentTool {
-  readonly name = FileToolName.ReadFile;
-  readonly description = READ_FILE_DESCRIPTION;
+  readonly name = DEFINITION.name;
+  readonly description = ToolDefinitionRenderer.description(DEFINITION);
   readonly schema = readFileSchema;
+  readonly requiresApproval = DEFINITION.requiresApproval;
+  readonly mutatesWorkspace = DEFINITION.mutatesWorkspace;
 
   constructor(
     private readonly validator: ReadFileValidator,

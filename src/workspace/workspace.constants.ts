@@ -93,12 +93,19 @@ export const BINARY_EXTENSIONS: readonly string[] = [
 ];
 
 export const EMPTY_ROOT_MESSAGE = 'workspace root must not be empty';
-export const EMPTY_PATH_MESSAGE = 'path must not be empty';
-export const NULL_BYTE_PATH_MESSAGE = 'path must not contain a null byte';
-export const OUTSIDE_WORKSPACE_MESSAGE = 'path is outside the workspace';
-export const GIT_PROTECTED_MESSAGE = '.git directory is protected';
-export const ENV_READ_DENIED_MESSAGE = 'reading .env files is not allowed';
-export const ENV_WRITE_DENIED_MESSAGE = 'writing .env files is not allowed';
+export const EMPTY_PATH_MESSAGE =
+  'path must not be empty. Pass a path relative to the workspace root';
+export const NULL_BYTE_PATH_MESSAGE =
+  'path must not contain a null byte. Pass a plain path relative to the workspace root';
+export const OUTSIDE_WORKSPACE_MESSAGE =
+  'path is outside the workspace. Use a path relative to the workspace root, without ".."';
+export const GIT_PROTECTED_MESSAGE =
+  '.git directory is protected. Use git_status or git_diff to inspect the repository';
+export const ENV_READ_DENIED_MESSAGE =
+  'reading .env files is not allowed. Read .env.example to see which variables exist';
+export const ENV_WRITE_DENIED_MESSAGE =
+  'changing .env files is not allowed. Change .env.example instead and leave the real values to the user';
 export const NODE_MODULES_WRITE_DENIED_MESSAGE =
   'writing into node_modules is not allowed. Install packages with a command instead';
-export const BINARY_READ_DENIED_MESSAGE = 'binary files cannot be read';
+export const BINARY_READ_DENIED_MESSAGE =
+  'binary files cannot be read. Only UTF-8 text files can be read';

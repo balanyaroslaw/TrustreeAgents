@@ -1,21 +1,25 @@
 import { z } from 'zod';
-import { FIRST_LINE } from '../file-tool.constants';
+import { FileToolName } from '../../enums/file-tool-name.enum';
+import { FILE_TOOL_DEFINITIONS, FIRST_LINE } from '../file-tool.constants';
+import { ToolDefinitionRenderer } from '../tool-definition.renderer';
+
+const DEFINITION = FILE_TOOL_DEFINITIONS[FileToolName.ReadFile];
 
 export const readFileSchema = z
   .object({
-    path: z.string().describe('Path to the file, relative to the workspace root.'),
+    path: z.string().describe(ToolDefinitionRenderer.parameterHint(DEFINITION, 'path')),
     startLine: z
       .number()
       .int()
       .min(FIRST_LINE)
       .optional()
-      .describe('First line to return, 1-based. Defaults to 1.'),
+      .describe(ToolDefinitionRenderer.parameterHint(DEFINITION, 'startLine')),
     endLine: z
       .number()
       .int()
       .min(FIRST_LINE)
       .optional()
-      .describe('Last line to return, inclusive. Defaults to the end of the file.'),
+      .describe(ToolDefinitionRenderer.parameterHint(DEFINITION, 'endLine')),
   })
   .refine(
     (input) =>

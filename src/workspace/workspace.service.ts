@@ -19,6 +19,7 @@ const POSIX_SEPARATOR = '/';
 @Injectable()
 export class WorkspaceService {
   private readonly rootPath: string;
+  private baseRef: string | null = null;
 
   constructor(@Inject(WORKSPACE_ROOT) root: string) {
     if (root.trim() === '') {
@@ -29,6 +30,14 @@ export class WorkspaceService {
 
   get root(): string {
     return this.rootPath;
+  }
+
+  get runBaseRef(): string | null {
+    return this.baseRef;
+  }
+
+  setRunBaseRef(ref: string | null): void {
+    this.baseRef = ref;
   }
 
   toRelative(absolutePath: string): string {

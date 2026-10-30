@@ -89,4 +89,17 @@ export class PathPolicy {
     }
     return null;
   }
+
+  static denyDeleteTargetReason(relativePath: string, target: WriteTarget): string | null {
+    if (target.isSymbolicLink) {
+      return WorkspaceMessages.symlinkDeleteTarget(relativePath);
+    }
+    if (target.isDirectory) {
+      return WorkspaceMessages.isDeletableDirectory(relativePath);
+    }
+    if (!target.isFile) {
+      return WorkspaceMessages.notRegularFileTarget(relativePath);
+    }
+    return null;
+  }
 }

@@ -1,18 +1,17 @@
 import { z } from 'zod';
-import { DEFAULT_LIST_DEPTH, MAX_LIST_DEPTH, MIN_LIST_DEPTH } from '../file-tool.constants';
+import { FileToolName } from '../../enums/file-tool-name.enum';
+import { FILE_TOOL_DEFINITIONS, MAX_LIST_DEPTH, MIN_LIST_DEPTH } from '../file-tool.constants';
+import { ToolDefinitionRenderer } from '../tool-definition.renderer';
+
+const DEFINITION = FILE_TOOL_DEFINITIONS[FileToolName.ListFiles];
 
 export const listFilesSchema = z.object({
-  path: z
-    .string()
-    .optional()
-    .describe('Directory to list, relative to the workspace root. Defaults to the root.'),
+  path: z.string().optional().describe(ToolDefinitionRenderer.parameterHint(DEFINITION, 'path')),
   depth: z
     .number()
     .int()
     .min(MIN_LIST_DEPTH)
     .max(MAX_LIST_DEPTH)
     .optional()
-    .describe(
-      `How many directory levels to show, ${MIN_LIST_DEPTH}-${MAX_LIST_DEPTH}. Defaults to ${DEFAULT_LIST_DEPTH}.`,
-    ),
+    .describe(ToolDefinitionRenderer.parameterHint(DEFINITION, 'depth')),
 });

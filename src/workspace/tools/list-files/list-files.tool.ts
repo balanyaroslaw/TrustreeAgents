@@ -3,16 +3,21 @@ import type { AgentTool } from '../../../agents/agent-tool.types';
 import { FileToolName } from '../../enums/file-tool-name.enum';
 import { ErrorInspector } from '../../utils/error.inspector';
 import { WorkspaceMessages } from '../../workspace.messages';
-import { LIST_FILES_DESCRIPTION } from '../file-tool.constants';
+import { FILE_TOOL_DEFINITIONS } from '../file-tool.constants';
+import { ToolDefinitionRenderer } from '../tool-definition.renderer';
 import { listFilesSchema } from './list-files.schema';
 import { ListFilesService } from './list-files.service';
 import { ListFilesValidator } from './list-files.validator';
 
+const DEFINITION = FILE_TOOL_DEFINITIONS[FileToolName.ListFiles];
+
 @Injectable()
 export class ListFilesTool implements AgentTool {
-  readonly name = FileToolName.ListFiles;
-  readonly description = LIST_FILES_DESCRIPTION;
+  readonly name = DEFINITION.name;
+  readonly description = ToolDefinitionRenderer.description(DEFINITION);
   readonly schema = listFilesSchema;
+  readonly requiresApproval = DEFINITION.requiresApproval;
+  readonly mutatesWorkspace = DEFINITION.mutatesWorkspace;
 
   constructor(
     private readonly validator: ListFilesValidator,
