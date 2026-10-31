@@ -4,6 +4,7 @@ import type { DeveloperResult } from './developer-result.types';
 export interface TrackedChange {
   readonly path: string;
   readonly action: ChangeAction;
+  readonly sequence: number;
 }
 
 export interface AgentRunUsage {

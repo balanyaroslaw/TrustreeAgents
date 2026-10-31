@@ -4,6 +4,7 @@ import { GitError } from '../errors/git.error';
 import { WorkspaceService } from '../workspace.service';
 import { SKIPPED_NAMES } from '../workspace.constants';
 import {
+  CHANGED_FILE_STATUS_BY_CODE,
   COPY_STATUS_CODE,
   DEV_NULL_PATH,
   GIT_ANY_DIRECTORY_GLOB,
@@ -15,10 +16,16 @@ import {
   GIT_MAX_BUFFER_BYTES,
   GIT_NUL_SEPARATOR,
   GIT_PATH_TERMINATOR,
+  GIT_REF_PATTERN,
   GIT_TIMEOUT_MS,
+  MAX_GIT_REF_LENGTH,
+  NUMSTAT_BINARY_MARKER,
+  NUMSTAT_FIELD_SEPARATOR,
   RENAME_STATUS_CODE,
 } from './git.constants';
 import { SEARCH_TIMEOUT_MS } from '../tools/file-tool.constants';
+import { ChangedFileStatus } from './changed-file-status.enum';
+import type { ChangedFile, LineCounts } from './changed-file.types';
 import type { GitCommandResult, GitGrepRequest, GitStatusEntry } from './git.types';
 
 const SUCCESS_EXIT_CODE = 0;
@@ -30,6 +37,13 @@ const STATUS_INDEX_INDEX = 0;
 const STATUS_WORKTREE_INDEX = 1;
 const STATUS_PATH_OFFSET = 3;
 const SUBCOMMAND_INDEX = 0;
+const NUMSTAT_ADDED_INDEX = 0;
+const NUMSTAT_REMOVED_INDEX = 1;
+const NUMSTAT_PATH_INDEX = 2;
+const NUMSTAT_FIELD_COUNT = 3;
+const NO_LINES = 0;
+const RENAME_SOURCE_FIELDS = 1;
+const STATUS_CODE_INDEX = 0;
 
 @Injectable()
 export class GitService {
@@ -164,6 +178,19 @@ export class GitService {
     return result.stdout;
   }
 
+  async changedFiles(baseRef: string): Promise<ChangedFile[]> {
+    GitService.assertRef(baseRef);
+
+    const counts = await this.diffNumstat(baseRef);
+    const tracked = (await this.diffNameStatus(baseRef)).map((entry) => ({
+      ...entry,
+      ...(counts.get(entry.path) ?? { added: NO_LINES, removed: NO_LINES }),
+    }));
+    const untracked = await this.untrackedChangedFiles();
+
+    return [...tracked, ...untracked].sort((left, right) => left.path.localeCompare(right.path));
+  }
+
   async resolveCommit(ref: string): Promise<string | null> {
     const result = await this.run(
       ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`],
@@ -217,6 +244,128 @@ export class GitService {
         },
       );
     });
+  }
+
+  private async diffNameStatus(
+    baseRef: string,
+  ): Promise<{ path: string; status: ChangedFileStatus }[]> {
+    const result = await this.run([
+      'diff',
+      '--name-status',
+      '--no-color',
+      '--no-ext-diff',
+      '-M',
+      '-z',
+      baseRef,
+      GIT_PATH_TERMINATOR,
+    ]);
+    const fields = GitService.splitNulList(result.stdout);
+    const entries: { path: string; status: ChangedFileStatus }[] = [];
+
+    for (let index = 0; index + RENAME_SOURCE_FIELDS < fields.length; index += 1) {
+      const code = fields[index][STATUS_CODE_INDEX];
+      const status = CHANGED_FILE_STATUS_BY_CODE[code] ?? ChangedFileStatus.Modified;
+      index += 1;
+      if (status === ChangedFileStatus.Renamed && index + RENAME_SOURCE_FIELDS < fields.length) {
+        index += 1;
+      }
+      entries.push({ path: fields[index], status });
+    }
+
+    return entries;
+  }
+
+  private async diffNumstat(baseRef: string): Promise<Map<string, LineCounts>> {
+    const result = await this.run([
+      'diff',
+      '--numstat',
+      '--no-color',
+      '--no-ext-diff',
+      '-M',
+      '-z',
+      baseRef,
+      GIT_PATH_TERMINATOR,
+    ]);
+    return GitService.parseNumstat(result.stdout);
+  }
+
+  private async untrackedChangedFiles(): Promise<ChangedFile[]> {
+    const files: ChangedFile[] = [];
+
+    for (const path of await this.untrackedFiles()) {
+      const counts = await this.newFileCounts(path);
+      if (counts === null) {
+        continue;
+      }
+      files.push({
+        path,
+        status: ChangedFileStatus.Added,
+        added: counts.added,
+        removed: counts.removed,
+      });
+    }
+
+    return files;
+  }
+
+  private async newFileCounts(relativePath: string): Promise<LineCounts | null> {
+    const result = await this.run(
+      [
+        'diff',
+        '--numstat',
+        '--no-color',
+        '--no-ext-diff',
+        '--no-index',
+        '-z',
+        GIT_PATH_TERMINATOR,
+        DEV_NULL_PATH,
+        relativePath,
+      ],
+      [DIFFERENCES_EXIT_CODE],
+    );
+    return GitService.parseNumstat(result.stdout).get(relativePath) ?? null;
+  }
+
+  private static parseNumstat(stdout: string): Map<string, LineCounts> {
+    const counts = new Map<string, LineCounts>();
+    const fields = GitService.splitNulList(stdout);
+
+    for (let index = 0; index < fields.length; index += 1) {
+      const parts = fields[index].split(NUMSTAT_FIELD_SEPARATOR);
+      if (parts.length < NUMSTAT_FIELD_COUNT) {
+        continue;
+      }
+      let path = parts[NUMSTAT_PATH_INDEX];
+      if (path === '' && index + RENAME_SOURCE_FIELDS < fields.length) {
+        index += RENAME_SOURCE_FIELDS + RENAME_SOURCE_FIELDS;
+        path = index < fields.length ? fields[index] : '';
+      }
+      if (path === '') {
+        continue;
+      }
+      const added = GitService.lineCount(parts[NUMSTAT_ADDED_INDEX]);
+      const removed = GitService.lineCount(parts[NUMSTAT_REMOVED_INDEX]);
+      if (added === null || removed === null) {
+        continue;
+      }
+      counts.set(path, { added, removed });
+    }
+
+    return counts;
+  }
+
+  private static lineCount(field: string): number | null {
+    if (field === NUMSTAT_BINARY_MARKER) {
+      return null;
+    }
+    const value = Number.parseInt(field, 10);
+    return Number.isNaN(value) ? NO_LINES : value;
+  }
+
+  private static assertRef(ref: string): void {
+    if (ref.length > MAX_GIT_REF_LENGTH || !GIT_REF_PATTERN.test(ref)) {
+      throw GitError.invalidRef(ref);
+    }
   }
 
   private static childEnvironment(): NodeJS.ProcessEnv {

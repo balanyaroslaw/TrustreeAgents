@@ -37,11 +37,6 @@ const FIRST_POSITIONAL = 0;
 const SECOND_POSITIONAL = 1;
 const ONLY_SUBCOMMAND = 1;
 
-// The allowlist below protects against mistakes of the model, it is not isolation: `npm run
-// <script>` executes whatever package.json says, and agents can edit package.json. Real isolation
-// would mean running the workspace in a container, which is out of scope for now.
-// run_command is mutatesWorkspace = true, but file changes made by commands (installs, build
-// output, generated files) are not seen by ChangeTracker: git_status is the source of truth.
 export class CommandPolicy {
   static async classify(
     tokens: readonly string[],

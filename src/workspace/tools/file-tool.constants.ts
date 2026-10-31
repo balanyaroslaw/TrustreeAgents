@@ -44,6 +44,11 @@ export const KILL_GRACE_MS = 5_000;
 
 export const FILE_MODE_MASK = 0o7777;
 
+export const ROLE_SCOPED_WRITE_TOOLS: readonly FileToolName[] = [
+  FileToolName.WriteFile,
+  FileToolName.EditFile,
+];
+
 const BYTES_PER_KILOBYTE = 1024;
 
 export const FILE_TOOL_DEFINITIONS: Readonly<Record<FileToolName, ToolDefinition>> = {

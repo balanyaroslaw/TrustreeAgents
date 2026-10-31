@@ -35,3 +35,12 @@ validated first, and an environment that carries no secrets.
 Each agent is described by an `AgentDefinition` object in `src/agents/agent-definitions.constants.ts`.
 Instruction text is produced only by `AgentDefinitionRenderer`; no prompt text inline in services.
 Facts about a run (counts, tokens, durations) are computed by code, never reported by the model.
+
+### Role-scoped rules
+
+Write access can be restricted per agent role in code (`RoleWritePolicy`), not by prompts. QA may
+write test files only and tests only the code changed in the current step.
+Pass/fail results, counts, freshness, the list of changed files and token usage are computed by code
+from recorded facts (`CommandRunRecorder`, `ChangeTracker`, git), never reported by the model.
+Agents receive their input from code-built, typed packets rendered by `*InputRenderer` classes.
+Claims of other agents are shown as claims.

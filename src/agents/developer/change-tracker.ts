@@ -1,20 +1,26 @@
+import { ActivityClock } from '../../workspace/activity/activity-clock';
 import { ChangeAction } from './change-action.enum';
 import type { TrackedChange } from './developer-report.types';
 
 export class ChangeTracker {
-  private readonly changes = new Map<string, ChangeAction>();
+  private readonly changes = new Map<string, TrackedChange>();
+
+  constructor(private readonly clock: ActivityClock) {}
 
   record(path: string, action: ChangeAction): void {
-    const merged = ChangeTracker.merge(this.changes.get(path), action);
+    const current = this.changes.get(path);
+    const merged = ChangeTracker.merge(current?.action, action);
+    const sequence = this.clock.next();
+
     if (merged === null) {
       this.changes.delete(path);
       return;
     }
-    this.changes.set(path, merged);
+    this.changes.set(path, { path, action: merged, sequence });
   }
 
   snapshot(): TrackedChange[] {
-    return [...this.changes.entries()].map(([path, action]) => ({ path, action }));
+    return [...this.changes.values()].sort((left, right) => left.sequence - right.sequence);
   }
 
   private static merge(

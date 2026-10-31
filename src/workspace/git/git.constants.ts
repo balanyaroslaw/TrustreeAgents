@@ -1,3 +1,4 @@
+import { ChangedFileStatus } from './changed-file-status.enum';
 import { GitChangeKind } from './git-change-kind.enum';
 
 export const GIT_BINARY = 'git';
@@ -40,6 +41,18 @@ export const GIT_STATUS_GROUP_ORDER: readonly GitChangeKind[] = [
   GitChangeKind.Untracked,
 ];
 
+export const CHANGED_FILE_STATUS_BY_CODE: Readonly<Record<string, ChangedFileStatus>> = {
+  A: ChangedFileStatus.Added,
+  C: ChangedFileStatus.Added,
+  M: ChangedFileStatus.Modified,
+  T: ChangedFileStatus.Modified,
+  D: ChangedFileStatus.Deleted,
+  R: ChangedFileStatus.Renamed,
+};
+
+export const NUMSTAT_FIELD_SEPARATOR = '\t';
+export const NUMSTAT_BINARY_MARKER = '-';
+
 export const MAX_STATUS_ENTRIES = 200;
 export const MAX_DIFF_CHARACTERS = 30_000;
 
@@ -66,5 +79,7 @@ export const INVALID_PATTERN_STDERR_MARKERS: readonly string[] = [
 ];
 export const INVALID_PATTERN_MESSAGE =
   'invalid regular expression. Fix the pattern or set literal to true';
+export const INVALID_GIT_REF_MESSAGE =
+  'invalid git ref. Pass a branch name, a tag or a commit that exists';
 export const GIT_TIMEOUT_MESSAGE =
   'git took too long or produced too much output and was stopped. Request a specific path';
