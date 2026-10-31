@@ -3,6 +3,7 @@ import { CHECKLIST_QUESTIONS } from '../reviewer/review-checklist.constants';
 import type { ReviewIssue } from '../reviewer/review-result.types';
 import { REVIEWER_MAX_LISTED_FILES } from '../reviewer/reviewer.constants';
 import { InputSectionRenderer } from './input-section.renderer';
+import { DEVELOPER_NOTES_HEADER } from './qa-input.constants';
 import {
   CHECKLIST_HEADER,
   PREVIOUS_ISSUES_HEADER,
@@ -30,7 +31,7 @@ export class ReviewInputRenderer {
         REVIEW_CHANGED_CODE_LABELS,
         REVIEWER_MAX_LISTED_FILES,
       ),
-      InputSectionRenderer.developerNotes(packet.developerNotes),
+      InputSectionRenderer.developerNotes(packet.developerNotes, DEVELOPER_NOTES_HEADER),
       ReviewInputRenderer.qaFacts(packet.qaFacts),
       InputSectionRenderer.completedSteps(packet.completedSteps),
       ReviewInputRenderer.attempt(packet),

@@ -3,7 +3,6 @@ import type { DeveloperChange, DeveloperResult } from '../developer/developer-re
 import { ChangedFileClassifier } from '../qa/changed-file.classifier';
 import { ChangedFileKind } from '../qa/changed-file-kind.enum';
 import {
-  DEVELOPER_NOTES_HEADER,
   MAX_CHANGE_DESCRIPTION_CHARACTERS,
   MAX_DEVELOPER_SUMMARY_CHARACTERS,
   MAX_LISTED_COMPLETED_STEPS,
@@ -74,12 +73,12 @@ export class InputSectionRenderer {
     return lines.join(LINE_SEPARATOR);
   }
 
-  static developerNotes(notes: DeveloperResult | null): string | null {
+  static developerNotes(notes: DeveloperResult | null, header: string): string | null {
     if (notes === null) {
       return null;
     }
     const lines = [
-      DEVELOPER_NOTES_HEADER,
+      header,
       `Status: ${notes.status}`,
       `Summary: ${InputSectionRenderer.trimmed(notes.summary, MAX_DEVELOPER_SUMMARY_CHARACTERS)}`,
       ...notes.changes.map(InputSectionRenderer.changeLine),

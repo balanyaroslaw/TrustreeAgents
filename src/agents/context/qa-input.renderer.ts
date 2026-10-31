@@ -1,7 +1,11 @@
 import { QA_MAX_LISTED_FILES } from '../qa/qa.constants';
 import type { QaDefect } from '../qa/qa-result.types';
 import { InputSectionRenderer } from './input-section.renderer';
-import { PREVIOUS_DEFECTS_HEADER, QA_CHANGED_CODE_LABELS } from './qa-input.constants';
+import {
+  DEVELOPER_NOTES_HEADER,
+  PREVIOUS_DEFECTS_HEADER,
+  QA_CHANGED_CODE_LABELS,
+} from './qa-input.constants';
 import { BRIEF_HEADER, CHANGED_INTERFACES_LABEL } from './qa-input.constants';
 import type { QaBrief } from './qa-brief.types';
 import type { QaInputPacket } from './qa-input.types';
@@ -24,7 +28,7 @@ export class QaInputRenderer {
         QA_CHANGED_CODE_LABELS,
         QA_MAX_LISTED_FILES,
       ),
-      InputSectionRenderer.developerNotes(packet.developerNotes),
+      InputSectionRenderer.developerNotes(packet.developerNotes, DEVELOPER_NOTES_HEADER),
       QaInputRenderer.brief(packet.brief),
       InputSectionRenderer.completedSteps(packet.completedSteps),
       QaInputRenderer.attempt(packet),

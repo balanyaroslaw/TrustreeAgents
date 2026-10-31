@@ -53,3 +53,13 @@ Its verdict is computed by code from the severities it reports and from unmet ac
 never taken from the model.
 Severity definitions live in the Reviewer definition and must not be changed without updating
 `BLOCKING_SEVERITIES`.
+
+### Orchestrator
+
+The Orchestrator is defined as one task definition per output (`ORCHESTRATOR_TASKS`): Plan, Brief,
+Decide, Summarize.
+Only the Plan task has tools. It never calls the other agents: `PlanExecutor` runs them and applies
+its decisions.
+Every decision passes through `DecisionGuard`, which may override it on recorded facts; overrides
+are stored and reported, never silent.
+Findings of other agents are forwarded to the Developer verbatim by `ReworkBriefBuilder`.
