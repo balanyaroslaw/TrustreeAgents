@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { FileAccessRecorder } from '../../activity/file-access.recorder';
 import { GitService } from '../../git/git.service';
 import { PathPolicy } from '../../security/path.policy';
 import { WorkspaceMessages } from '../../workspace.messages';
@@ -20,7 +21,11 @@ const WHOLE_WORKSPACE_SCOPE = 'the workspace';
 
 @Injectable()
 export class SearchCodeService {
-  constructor(private readonly git: GitService) {}
+  // The recorder is present only while an agent call is running.
+  constructor(
+    @Inject(GitService) private readonly git: GitService,
+    @Optional() @Inject(FileAccessRecorder) private readonly access?: FileAccessRecorder,
+  ) {}
 
   async search(request: ValidatedSearchRequest): Promise<string> {
     const lines = SearchCodeService.parse(await this.git.grep(request)).filter(
@@ -28,6 +33,10 @@ export class SearchCodeService {
     );
     const matchKeys = await this.matchKeys(request);
     const matches = lines.filter((line) => SearchCodeService.isMatch(line, matchKeys));
+
+    for (const match of matches) {
+      this.access?.record(match.path);
+    }
 
     if (matches.length === 0) {
       return WorkspaceMessages.searchNoMatches(

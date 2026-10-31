@@ -12,6 +12,7 @@ const LAST_SEGMENT_OFFSET = 1;
 const SPECIFIER_GROUP_INDEX = 1;
 const FIRST_SEGMENT = 0;
 const LINE_SEPARATOR = '\n';
+const NAME_PART_SEPARATOR = '.';
 
 // Heuristic: a test is assumed to cover the changed code when its name stem matches a changed
 // source file or when it imports one. End-to-end tests are never flagged, because they go through
@@ -22,7 +23,7 @@ export class TestScopeChecker {
     changedSourcePaths: readonly string[],
     testFileDiff: string,
   ): string[] {
-    const sourceStems = new Set(changedSourcePaths.map(TestScopeChecker.stemOf));
+    const sourceStems = changedSourcePaths.map(TestScopeChecker.stemOf);
     const addedLines = AddedLinesReader.read(testFileDiff);
 
     return testPaths
@@ -32,13 +33,13 @@ export class TestScopeChecker {
 
   private static coversChangedCode(
     testPath: string,
-    sourceStems: ReadonlySet<string>,
+    sourceStems: readonly string[],
     addedLines: ReadonlyMap<string, readonly string[]>,
   ): boolean {
     if (TestScopeChecker.isEndToEnd(testPath)) {
       return true;
     }
-    if (sourceStems.has(TestScopeChecker.stemOf(testPath))) {
+    if (TestScopeChecker.isKnownStem(TestScopeChecker.stemOf(testPath), sourceStems)) {
       return true;
     }
     return TestScopeChecker.importsChangedCode(addedLines.get(testPath) ?? [], sourceStems);
@@ -46,7 +47,7 @@ export class TestScopeChecker {
 
   private static importsChangedCode(
     lines: readonly string[],
-    sourceStems: ReadonlySet<string>,
+    sourceStems: readonly string[],
   ): boolean {
     const pattern = new RegExp(IMPORT_SPECIFIER_PATTERN);
     const text = lines.join(LINE_SEPARATOR);
@@ -56,10 +57,21 @@ export class TestScopeChecker {
       if (match === null) {
         return false;
       }
-      if (sourceStems.has(TestScopeChecker.stemOf(match[SPECIFIER_GROUP_INDEX]))) {
+      const stem = TestScopeChecker.stemOf(match[SPECIFIER_GROUP_INDEX]);
+      if (TestScopeChecker.isKnownStem(stem, sourceStems)) {
         return true;
       }
     }
+  }
+
+  // "payment.service" also counts as a match for "payment.service.spec" or "payment".
+  private static isKnownStem(stem: string, sourceStems: readonly string[]): boolean {
+    return sourceStems.some(
+      (candidate) =>
+        candidate === stem ||
+        candidate.startsWith(`${stem}${NAME_PART_SEPARATOR}`) ||
+        stem.startsWith(`${candidate}${NAME_PART_SEPARATOR}`),
+    );
   }
 
   private static isEndToEnd(relativePath: string): boolean {

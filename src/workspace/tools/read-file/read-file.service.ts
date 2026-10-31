@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
+import { FileAccessRecorder } from '../../activity/file-access.recorder';
 import { BinaryDetector } from '../../security/binary.detector';
 import { TextContent } from '../../utils/text-content';
 import { BINARY_READ_DENIED_MESSAGE } from '../../workspace.constants';
@@ -10,10 +11,16 @@ import type { ValidatedReadFileRequest } from './read-file.types';
 
 @Injectable()
 export class ReadFileService {
+  // Present only while an agent call is running; without it reads are simply not recorded.
+  constructor(
+    @Optional() @Inject(FileAccessRecorder) private readonly access?: FileAccessRecorder,
+  ) {}
+
   async read(request: ValidatedReadFileRequest): Promise<string> {
     const { absolutePath, relativePath, sizeBytes, startLine, endLine } = request;
 
     if (sizeBytes === 0) {
+      this.access?.record(relativePath);
       return WorkspaceMessages.empty(relativePath);
     }
 
@@ -34,6 +41,8 @@ export class ReadFileService {
     if (startLine > totalLines) {
       throw new Error(WorkspaceMessages.startLinePastEnd(startLine, relativePath, totalLines));
     }
+
+    this.access?.record(relativePath);
 
     return this.render(relativePath, lines, totalLines, startLine, endLine ?? totalLines);
   }

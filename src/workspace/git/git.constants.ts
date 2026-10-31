@@ -79,7 +79,6 @@ export const INVALID_PATTERN_STDERR_MARKERS: readonly string[] = [
 ];
 export const INVALID_PATTERN_MESSAGE =
   'invalid regular expression. Fix the pattern or set literal to true';
-export const INVALID_GIT_REF_MESSAGE =
-  'invalid git ref. Pass a branch name, a tag or a commit that exists';
+export const INVALID_GIT_REF_HINT = 'Pass a branch name, a tag or a commit that exists';
 export const GIT_TIMEOUT_MESSAGE =
   'git took too long or produced too much output and was stopped. Request a specific path';

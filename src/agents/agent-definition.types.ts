@@ -1,7 +1,7 @@
 import type { FileToolName } from '../workspace/enums/file-tool-name.enum';
 import type { AgentRole } from './agent-role.enum';
 
-export type DefinedAgentRole = AgentRole.Developer | AgentRole.Qa;
+export type DefinedAgentRole = AgentRole.Developer | AgentRole.Qa | AgentRole.Reviewer;
 
 export interface AgentDefinition {
   readonly role: AgentRole;

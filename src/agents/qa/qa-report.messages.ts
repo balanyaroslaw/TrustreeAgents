@@ -51,7 +51,7 @@ export class QaReportMessages {
   }
 
   static suspiciousTestChange(path: string, marker: string, line: string): string {
-    return `${path} adds a weakened test (${marker}): ${line}`;
+    return `${path} adds "${marker}" (a weakened or disabled test): ${line}`;
   }
 
   static claimedTestFileNotChanged(paths: readonly string[]): string {

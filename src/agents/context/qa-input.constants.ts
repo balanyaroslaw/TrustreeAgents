@@ -1,3 +1,5 @@
+import type { ChangedCodeLabels } from './input-section.types';
+
 export const MAX_BRIEF_FOCUS_ITEMS = 6;
 export const MAX_BRIEF_RISK_ITEMS = 4;
 export const MAX_BRIEF_INTERFACE_ITEMS = 8;
@@ -9,11 +11,12 @@ export const MAX_LISTED_OPEN_ISSUES = 5;
 export const MAX_LISTED_COMPLETED_STEPS = 5;
 export const TRUNCATION_SUFFIX = '...';
 
-export const CHANGED_CODE_HEADER =
-  'Changed code in this step (from git; this is the scope of your tests):';
-export const SOURCE_GROUP_HEADER = 'Source:';
-export const TEST_GROUP_HEADER = 'Existing tests changed:';
-export const OTHER_GROUP_HEADER = 'Other files (not test targets):';
+export const QA_CHANGED_CODE_LABELS: ChangedCodeLabels = {
+  header: 'Changed code in this step (from git; this is the scope of your tests):',
+  source: 'Source:',
+  tests: 'Existing tests changed:',
+  other: 'Other files (not test targets):',
+};
 export const CRITERIA_HEADER = 'Acceptance criteria:';
 export const DEVELOPER_NOTES_HEADER = 'Developer notes (claims; verify them against the code):';
 export const BRIEF_HEADER =

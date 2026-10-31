@@ -1,7 +1,7 @@
 import { GitErrorReason } from '../enums/git-error-reason.enum';
 import {
   GIT_TIMEOUT_MESSAGE,
-  INVALID_GIT_REF_MESSAGE,
+  INVALID_GIT_REF_HINT,
   INVALID_PATTERN_MESSAGE,
   INVALID_PATTERN_STDERR_MARKERS,
   GIT_UNAVAILABLE_MESSAGE,
@@ -37,7 +37,10 @@ export class GitError extends Error {
   }
 
   static invalidRef(ref: string): GitError {
-    return new GitError(`${INVALID_GIT_REF_MESSAGE}: "${ref}"`, GitErrorReason.InvalidRef);
+    return new GitError(
+      `invalid git ref "${ref}". ${INVALID_GIT_REF_HINT}`,
+      GitErrorReason.InvalidRef,
+    );
   }
 
   static fromStderr(subcommand: string, stderr: string): GitError {

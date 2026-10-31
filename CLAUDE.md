@@ -44,3 +44,12 @@ Pass/fail results, counts, freshness, the list of changed files and token usage 
 from recorded facts (`CommandRunRecorder`, `ChangeTracker`, git), never reported by the model.
 Agents receive their input from code-built, typed packets rendered by `*InputRenderer` classes.
 Claims of other agents are shown as claims.
+
+### Reviewer
+
+The Reviewer is read-only by construction: its role tool set contains no tool with
+`mutatesWorkspace = true`.
+Its verdict is computed by code from the severities it reports and from unmet acceptance criteria,
+never taken from the model.
+Severity definitions live in the Reviewer definition and must not be changed without updating
+`BLOCKING_SEVERITIES`.

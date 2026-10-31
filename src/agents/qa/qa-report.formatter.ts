@@ -67,7 +67,8 @@ export class QaReportFormatter {
     );
   }
 
-  private static fullRun(run: QaFullRun): string {
+  // Public: the Reviewer input packet shows the same line to keep one format for a test run.
+  static fullRun(run: QaFullRun): string {
     const exitCode = run.timedOut
       ? TIMED_OUT
       : `exit ${run.exitCode === null ? NOT_AVAILABLE : String(run.exitCode)}`;
