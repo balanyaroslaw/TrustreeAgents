@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { stat } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { PathPolicy } from '../../security/path.policy';
@@ -12,7 +12,7 @@ import type { ValidatedListFilesRequest } from './list-files.types';
 
 @Injectable()
 export class ListFilesValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedListFilesRequest> {
     const parsed = listFilesSchema.safeParse(input);

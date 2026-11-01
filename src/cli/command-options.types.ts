@@ -1,8 +1,3 @@
-export interface RunCommandOptions {
-  workspace: string;
-  tui: boolean;
-}
-
 export interface UsageCommandOptions {
   run?: string;
   last?: boolean;
@@ -32,5 +27,15 @@ export interface PricesCommandOptions {
 export interface PruneCommandOptions {
   olderThan?: number;
   run?: string;
+  yes?: boolean;
+}
+
+export interface TeamRunCommandOptions {
+  workspace?: string;
+  // commander sets this to false when --no-tui is passed
+  tui?: boolean;
+  budget?: number;
+  maxSteps?: number;
+  dryRun?: boolean;
   yes?: boolean;
 }

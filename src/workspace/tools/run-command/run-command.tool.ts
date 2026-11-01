@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AgentTool } from '../../../agents/agent-tool.types';
 import { FileToolName } from '../../enums/file-tool-name.enum';
 import { ErrorInspector } from '../../utils/error.inspector';
@@ -20,8 +20,8 @@ export class RunCommandTool implements AgentTool {
   readonly mutatesWorkspace = DEFINITION.mutatesWorkspace;
 
   constructor(
-    private readonly validator: RunCommandValidator,
-    private readonly service: RunCommandService,
+    @Inject(RunCommandValidator) private readonly validator: RunCommandValidator,
+    @Inject(RunCommandService) private readonly service: RunCommandService,
   ) {}
 
   async execute(input: unknown): Promise<string> {

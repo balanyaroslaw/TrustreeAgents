@@ -1,11 +1,7 @@
-export const DEFAULT_WORKSPACE_PATH = '.';
 export const DEFAULT_HISTORY_LIMIT = 10;
 export const INVALID_ARGUMENT_EXIT_CODE = 1;
 
-export const MISSING_PROMPT_MESSAGE =
-  'error: missing prompt argument. Usage: team run "<prompt>" [-w <path>]';
 export const INVALID_LIMIT_MESSAGE = 'error: --limit must be a positive integer';
-export const RUN_NOT_IMPLEMENTED_MESSAGE = 'run: not implemented yet';
 export const INVALID_DIMENSION_MESSAGE = 'error: --by must be one of agent, step, model';
 export const INVALID_PRICE_MESSAGE =
   'error: --set needs --input, --cached and --output as non-negative numbers';

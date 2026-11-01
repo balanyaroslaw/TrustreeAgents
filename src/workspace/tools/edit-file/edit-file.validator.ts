@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { lstat, readFile } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { BinaryDetector } from '../../security/binary.detector';
@@ -22,7 +22,7 @@ const NOT_FOUND_INDEX = -1;
 
 @Injectable()
 export class EditFileValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedEditRequest> {
     const parsed = editFileSchema.safeParse(input);

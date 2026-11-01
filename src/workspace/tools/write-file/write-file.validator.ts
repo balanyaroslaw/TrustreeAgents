@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { lstat } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { PathPolicy } from '../../security/path.policy';
@@ -12,7 +12,7 @@ import type { ValidatedWriteFileRequest } from './write-file.types';
 
 @Injectable()
 export class WriteFileValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedWriteFileRequest> {
     const parsed = writeFileSchema.safeParse(input);

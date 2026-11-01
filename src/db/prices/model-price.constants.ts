@@ -10,4 +10,7 @@ export const MODEL_PRICE_SEED: readonly ModelPriceInput[] = [
   { model: 'gpt-5', inputPerM: 1.25, cachedInputPerM: 0.125, outputPerM: 10 },
   { model: 'gpt-5-mini', inputPerM: 0.25, cachedInputPerM: 0.025, outputPerM: 2 },
   { model: 'gpt-5-nano', inputPerM: 0.05, cachedInputPerM: 0.005, outputPerM: 0.4 },
+  // The model a --dry-run records its calls under. Priced at zero on purpose, so a dry run costs
+  // nothing and is not reported as an unpriced model.
+  { model: 'dry-run', inputPerM: 0, cachedInputPerM: 0, outputPerM: 0 },
 ];

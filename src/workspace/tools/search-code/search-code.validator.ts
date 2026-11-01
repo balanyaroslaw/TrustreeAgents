@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { stat } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { PathPolicy } from '../../security/path.policy';
@@ -16,7 +16,7 @@ const ABSOLUTE_PREFIX = '/';
 
 @Injectable()
 export class SearchCodeValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedSearchRequest> {
     const parsed = searchCodeSchema.safeParse(input);

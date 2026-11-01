@@ -15,6 +15,7 @@ export class AttemptMapper {
       decision: JsonValue.object(attempt.decision),
       guarded: JsonValue.object(attempt.guarded),
       changedFiles: JsonValue.object(attempt.changedFiles),
+      note: attempt.note,
       effectiveDecision:
         attempt.effectiveDecision === null
           ? null

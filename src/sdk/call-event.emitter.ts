@@ -20,8 +20,8 @@ export class CallEventEmitter {
     this.origin = {
       role: target.role,
       task: target.task,
-      stepIndex: null,
-      attempt: null,
+      stepIndex: scope.stepIndex ?? null,
+      attempt: scope.attempt ?? null,
     };
   }
 

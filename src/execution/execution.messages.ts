@@ -96,6 +96,25 @@ export class ExecutionMessages {
     return `not started because step ${index} failed`;
   }
 
+  static skippedOverStepLimit(maxSteps: number): string {
+    return `not started: the plan has more steps than the --max-steps limit of ${maxSteps}`;
+  }
+
+  static stepLimitReached(planned: number, maxSteps: number): string {
+    return (
+      `the plan has ${ExecutionMessages.count(planned, 'step')} but --max-steps allows ` +
+      `${maxSteps}, so the steps after ${maxSteps} were not started`
+    );
+  }
+
+  static confirmPlan(): string {
+    return 'Run these steps? Each step calls the Developer, QA and the Reviewer. [y/N]';
+  }
+
+  static planRejected(): string {
+    return 'the plan was not confirmed, so no step was started';
+  }
+
   static nothingToCommit(): string {
     return 'the step was accepted but changed no file, so there is no commit';
   }

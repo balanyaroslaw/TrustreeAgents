@@ -18,10 +18,6 @@ export class RunSignalListener {
     this.controller = null;
   }
 
-  wasInterrupted(): boolean {
-    return this.interrupted;
-  }
-
   private readonly handler = (): void => {
     if (this.interrupted) {
       process.exit(IMMEDIATE_EXIT_CODE);

@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { AgentEvent, AgentEventListener } from './agent-event.types';
 
-// The only channel from the execution core to the outside: the terminal UI and the database
-// logger subscribe, the executor knows none of them. A listener that throws is ignored, so a
-// broken subscriber can never fail a run.
+// The only channel from the execution core to the outside: the terminal printer subscribes for
+// the duration of a command, and the executor knows nothing about it. A listener that throws is
+// ignored, so a broken subscriber can never fail a run.
 @Injectable()
 export class EventBus {
   private readonly listeners = new Set<AgentEventListener>();

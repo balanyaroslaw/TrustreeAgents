@@ -1,6 +1,7 @@
 import type { AgentRole } from '../agents/agent-role.enum';
 import type { StepDecisionKind } from '../agents/orchestrator/decide/step-decision.enum';
 import type { OrchestratorTask } from '../agents/orchestrator/orchestrator-task.enum';
+import type { RunPlanStep } from '../agents/orchestrator/plan/run-plan.types';
 import type { RunStatus } from '../execution/run-status.enum';
 import type { AgentEventKind } from './agent-event-kind.enum';
 
@@ -28,6 +29,8 @@ export interface PlanCreatedEvent extends RunEventBase {
   readonly kind: AgentEventKind.PlanCreated;
   readonly steps: number;
   readonly summary: string;
+  // The steps themselves, so a listener can show what will be executed without asking anyone.
+  readonly plan: readonly RunPlanStep[];
 }
 
 export interface PlanQuestionsEvent extends RunEventBase {

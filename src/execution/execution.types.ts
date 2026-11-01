@@ -17,8 +17,11 @@ export interface RunRequest {
   readonly workspacePath: string;
   readonly prompt: string;
   readonly attended: boolean;
+  // Set when the user already agreed to spend the budget, so the plan is not confirmed again.
+  readonly autoApprove: boolean;
   readonly tokenBudget?: number;
   readonly timeoutMs?: number;
+  readonly maxSteps?: number;
 }
 
 // What the workspace looks like before planning: the Orchestrator is told whether it starts from

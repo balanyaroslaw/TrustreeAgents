@@ -25,7 +25,11 @@ export interface PartialInvocation {
   readonly commandRuns: readonly CommandRunRecord[];
 }
 
+// Where a call belongs in the run: the step and attempt it was made for, and the id of the
+// attempt row it is charged to. All three are null for the Orchestrator calls that sit outside
+// any step.
 export interface AgentCallScope {
   readonly stepIndex: number | null;
   readonly attempt: number | null;
+  readonly attemptId: string | null;
 }

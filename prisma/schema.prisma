@@ -108,6 +108,7 @@ model StepAttempt {
   reviewReport      Json?         @map("review_report")
   decision          Json?
   guarded           Json?
+  note              String?
   effectiveDecision DecisionKind? @map("effective_decision")
   overridden        Boolean       @default(false)
   changedFiles      Json?         @map("changed_files")

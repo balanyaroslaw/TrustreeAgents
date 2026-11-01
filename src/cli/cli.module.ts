@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { TestFileDiffCollector } from '../agents/qa/test-file-diff.collector';
-import { WorkspaceSurveyor } from '../execution/workspace.surveyor';
+import { ExecutionModule } from '../execution/execution.module';
 import { SdkModule } from '../sdk/sdk.module';
 import { WorkspaceModule } from '../workspace/workspace.module';
 import { AgentCommand } from './agent.command';
@@ -15,10 +14,8 @@ import { RunCommand } from './run.command';
 import { UsageCommand } from './usage.command';
 
 @Module({
-  imports: [WorkspaceModule, SdkModule],
+  imports: [WorkspaceModule, SdkModule, ExecutionModule],
   providers: [
-    WorkspaceSurveyor,
-    TestFileDiffCollector,
     AgentInputBuilder,
     AgentReportPrinter,
     RunCommand,

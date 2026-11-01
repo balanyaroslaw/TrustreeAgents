@@ -1,13 +1,6 @@
 import type { StepStatus } from '../../execution/step-status.enum';
 import type { StepAttemptRecord } from './attempt.repository.types';
 
-export interface NewPlanStep {
-  readonly index: number;
-  readonly title: string;
-  readonly description: string;
-  readonly acceptanceCriteria: readonly string[];
-}
-
 export interface PlanStepRecord {
   readonly id: string;
   readonly runId: string;

@@ -32,20 +32,43 @@ npm run team -- run --help
 
 ### `run "<prompt>"`
 
-Runs a prompt against the agent team. Prints the prompt and the resolved absolute workspace path.
+Runs a prompt against the whole team. The Orchestrator plans the work, then every step runs the
+Developer, QA and the Reviewer, the Orchestrator decides what to do with the result, and accepted
+steps are committed one per step on a `agent/run-<id>` branch. The run ends with
+`reports/run-<id>.md`. Nothing is ever pushed.
 
-| Option                   | Default           | Description                                                                     |
-| ------------------------ | ----------------- | ------------------------------------------------------------------------------- |
-| `-w, --workspace <path>` | current directory | workspace directory the agents work in; relative paths are resolved to absolute |
-| `--no-tui`               | TUI enabled       | disable the interactive TUI and print plain text                                |
+It needs `OPENAI_API_KEY` in `.env` and a running database, unless you pass `--dry-run`.
+
+| Option                   | Default           | Description                                                                      |
+| ------------------------ | ----------------- | -------------------------------------------------------------------------------- |
+| `-w, --workspace <path>` | current directory | workspace directory the agents work in; relative paths are resolved to absolute  |
+| `--no-tui`               | TUI enabled       | disable the interactive TUI and print plain text; also makes the run unattended   |
+| `--budget <tokens>`      | `200000`          | how many tokens the whole run may spend; it stops as `failed` when they run out   |
+| `--max-steps <n>`        | every planned step| run at most this many plan steps; the rest are skipped                           |
+| `--dry-run`              | off               | exercise the whole run on canned answers, calling no model and spending nothing   |
+| `--yes`                  | off               | do not ask for confirmation of the plan before the steps run                     |
 
 ```bash
 npm run team -- run "add a health endpoint"
-npm run team -- run "demo" -w ../some-folder
-npm run team -- run "demo" --no-tui
+npm run team -- run "demo" -w ../some-folder --budget 50000
+npm run team -- run "demo" --max-steps 1
+npm run team -- run "demo" --dry-run --yes
 ```
 
-Without a prompt the command prints an error and exits with code `1`.
+The budget and the model of every role are printed before the first model call. On a terminal the
+plan is shown and confirmed once before any step starts; `--yes` skips that question and
+`--no-tui` makes the run unattended, which answers it the same way.
+
+Exit codes: `0` the run completed, `1` it failed or the arguments were wrong, `130` it was
+cancelled with Ctrl+C. A cancelled run keeps the work it already committed.
+
+#### `--dry-run`
+
+A dry run replaces the model with canned answers: a two-step plan, a Developer that writes one
+file, a passing QA report, an approving review and an accept decision. Every call is still
+recorded in `agent_calls` under the model name `dry-run`, which is priced at zero, so the loop,
+the commits, the report and the per-step accounting can be checked without spending anything. It
+still needs the database, and it still writes real files and real commits in the workspace.
 
 ### `agent`
 
@@ -160,8 +183,8 @@ inside the container Postgres always listens on 5432.
 
 ```bash
 npm run build   # compile to dist/ with nest build
-npm test        # jest unit tests
 npm run lint    # eslint
+npm test        # jest; there are no test files yet, so this passes with --passWithNoTests
 ```
 
 After `npm run build` the CLI can also be run from the compiled output:
@@ -178,10 +201,21 @@ src/
   app.module.ts
   cli/
     cli.module.ts          registers all commands
-    run.command.ts
+    run.command.ts         the whole team on one prompt
+    agent.command.ts       one agent on one task
     agents.command.ts
     usage.command.ts
     history.command.ts
+  execution/
+    execution.module.ts    the executor and the four ports it needs
+    plan-executor.ts       owns one run: plan, steps, budget, report
+    step-runner.ts         owns one step: Developer, QA, Reviewer, decision
+    agents/                the AgentInvoker port and the canned --dry-run invoker
+    checkpoint/            the run branch and one commit per accepted step
+    persistence/           what the executor needs from the database
+    report/                the final run report
   agents/
-    agents.config.ts       typed agent list
+    agents.config.ts       which model each role runs on
+  sdk/                     the only place that imports @openai/agents
+  db/                      prisma, repositories, prices
 ```

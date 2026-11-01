@@ -79,11 +79,16 @@ export class StepRunner {
       });
 
       const state = new AttemptState(attempt, Date.now(), context.budget.spent());
+      state.attemptId = await this.attempts.openAttempt({
+        runId: context.runId,
+        stepIndex: context.step.index,
+        attempt,
+      });
       await this.runAttempt(context, state, carry, decisions);
 
       const outcome = state.outcome(context.budget.spent());
       outcomes.push(outcome);
-      await this.persist(context, outcome);
+      await this.persist(state, outcome);
 
       const { guarded } = state;
       if (guarded === null) {
@@ -363,20 +368,23 @@ export class StepRunner {
     }
   }
 
-  private async persist(context: StepRunContext, outcome: AttemptOutcome): Promise<void> {
-    await this.attempts.appendAttempt({
-      runId: context.runId,
-      stepIndex: context.step.index,
-      attempt: outcome.attempt,
+  // An attempt whose row could not be opened is still run and still reported; only its stored
+  // copy is missing, which the guarded write has already logged.
+  private async persist(state: AttemptState, outcome: AttemptOutcome): Promise<void> {
+    const { attemptId } = state;
+    if (attemptId === null) {
+      return;
+    }
+    await this.attempts.completeAttempt({
+      attemptId,
       developerReport: outcome.developerReport,
       qaReport: outcome.qaReport,
       reviewReport: outcome.reviewReport,
       decision: outcome.guarded?.decision ?? null,
       guarded: outcome.guarded,
+      changedFiles: state.reviewScope,
       note: outcome.note,
-      tokens: outcome.tokens,
       durationMs: outcome.durationMs,
-      createdAt: new Date(),
     });
   }
 
@@ -399,7 +407,11 @@ export class StepRunner {
   }
 
   private static scopeOf(context: StepRunContext, state: AttemptState): AgentCallScope {
-    return { stepIndex: context.step.index, attempt: state.attempt };
+    return {
+      stepIndex: context.step.index,
+      attempt: state.attempt,
+      attemptId: state.attemptId,
+    };
   }
 
   // The same finding can be deferred in every attempt of a step; the step defers it once.

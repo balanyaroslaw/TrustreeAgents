@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { AgentTool } from '../../../agents/agent-tool.types';
 import { FileToolName } from '../../enums/file-tool-name.enum';
 import { ErrorInspector } from '../../utils/error.inspector';
@@ -20,8 +20,8 @@ export class EditFileTool implements AgentTool {
   readonly mutatesWorkspace = DEFINITION.mutatesWorkspace;
 
   constructor(
-    private readonly validator: EditFileValidator,
-    private readonly service: EditFileService,
+    @Inject(EditFileValidator) private readonly validator: EditFileValidator,
+    @Inject(EditFileService) private readonly service: EditFileService,
   ) {}
 
   async execute(input: unknown): Promise<string> {

@@ -20,6 +20,9 @@ export class AttemptState {
   reviewScope: readonly ChangedFile[] = [];
   note: string | null = null;
   verificationSkipped = false;
+  // The step_attempts row this attempt was opened as, so every agent call it makes is charged to
+  // it. Null when the row could not be written: the attempt still runs, unattributed.
+  attemptId: string | null = null;
 
   constructor(
     readonly attempt: number,

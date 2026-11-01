@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { lstat } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { GitService } from '../../git/git.service';
@@ -18,8 +18,8 @@ export class DeleteFileValidator {
   private static readonly protectedNames = new Set(PROTECTED_ROOT_FILES);
 
   constructor(
-    private readonly workspace: WorkspaceService,
-    private readonly git: GitService,
+    @Inject(WorkspaceService) private readonly workspace: WorkspaceService,
+    @Inject(GitService) private readonly git: GitService,
   ) {}
 
   async validate(input: unknown): Promise<ValidatedDeleteRequest> {

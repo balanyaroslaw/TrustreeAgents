@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
@@ -21,8 +21,8 @@ const LAST_INDEX_OFFSET = 1;
 @Injectable()
 export class GitDiffService {
   constructor(
-    private readonly workspace: WorkspaceService,
-    private readonly git: GitService,
+    @Inject(WorkspaceService) private readonly workspace: WorkspaceService,
+    @Inject(GitService) private readonly git: GitService,
   ) {}
 
   async diff(request: ValidatedDiffRequest): Promise<string> {

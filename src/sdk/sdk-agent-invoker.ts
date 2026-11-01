@@ -21,26 +21,12 @@ import { SdkErrorMapper } from './sdk-error.mapper';
 import type { SdkBootstrap } from './sdk.bootstrap';
 import {
   INSTRUCTIONS_HASH_ALGORITHM,
-  RETRY_BACKOFF_FACTOR,
-  SDK_RETRY_ATTEMPTS,
-  SDK_RETRY_BASE_DELAY_MS,
-  SDK_RETRY_MAX_DELAY_MS,
+  LIFECYCLE_EVENTS_ENABLED,
   SDK_STREAMING_ENABLED,
 } from './sdk.constants';
 import { StreamEventMapper } from './stream-event.mapper';
 import { UsageReader } from './usage.reader';
 import { UsageTally } from './usage.tally';
-
-const FIRST_ATTEMPT = 1;
-const TOO_MANY_REQUESTS = 429;
-const SERVER_ERROR = 500;
-const TRANSIENT_ERROR_CODES: readonly string[] = [
-  'ECONNRESET',
-  'ETIMEDOUT',
-  'ENOTFOUND',
-  'EAI_AGAIN',
-  'ECONNREFUSED',
-];
 
 // The only way a model is called. Every call is built fresh, run inside its own recorder scope,
 // and written to agent_calls whether it succeeded or failed: there is no path to a model that is
@@ -86,17 +72,24 @@ export class SdkAgentInvoker implements AgentInvoker {
     const built = this.build(target, context, models[target.role], streaming ? null : emitter);
     const tally = new UsageTally();
     const started = Date.now();
-    emitter.agentStarted();
+    const lifecycle = this.options.lifecycleEvents ?? LIFECYCLE_EVENTS_ENABLED;
+    if (lifecycle) {
+      emitter.agentStarted();
+    }
 
     try {
       const output = await this.store.run(context.recorders, () =>
-        this.runWithRetries(built, inputText, signal, emitter, streaming, tally),
+        this.runOnce(built, inputText, signal, emitter, streaming, tally),
       );
       const usage = tally.snapshot();
       const durationMs = Date.now() - started;
-      emitter.tokensUsed(usage.input, usage.cachedInput, usage.output, usage.total);
+      if (lifecycle) {
+        emitter.tokensUsed(usage.input, usage.cachedInput, usage.output, usage.total);
+      }
       await this.record(target, built, usage, context.toolCalls, durationMs, null);
-      emitter.agentFinished(context.toolCalls, durationMs, null);
+      if (lifecycle) {
+        emitter.agentFinished(context.toolCalls, durationMs, null);
+      }
 
       return {
         output: output as TOutput,
@@ -112,7 +105,9 @@ export class SdkAgentInvoker implements AgentInvoker {
       const usage = tally.snapshot();
       const durationMs = Date.now() - started;
       await this.record(target, built, usage, context.toolCalls, durationMs, kind);
-      emitter.agentFinished(context.toolCalls, durationMs, kind);
+      if (lifecycle) {
+        emitter.agentFinished(context.toolCalls, durationMs, kind);
+      }
 
       throw new AgentInvocationError(
         kind,
@@ -144,30 +139,9 @@ export class SdkAgentInvoker implements AgentInvoker {
     return this.factory.buildOrchestrator({ task: target.task, context, model, maxTurns, emitter });
   }
 
-  // The underlying client already retries transient failures, so SDK_RETRY_ATTEMPTS is 0 and no
-  // second layer is stacked on top of it. The usage of every attempt is counted either way, so a
-  // retried call reports what it really cost. A schema failure is never retried here: the
-  // executor decides what to do with it.
-  private async runWithRetries(
-    built: BuiltAgent,
-    inputText: string,
-    signal: AbortSignal,
-    emitter: CallEventEmitter,
-    streaming: boolean,
-    tally: UsageTally,
-  ): Promise<unknown> {
-    for (let attempt = FIRST_ATTEMPT; ; attempt += 1) {
-      try {
-        return await this.runOnce(built, inputText, signal, emitter, streaming, tally);
-      } catch (error) {
-        if (attempt > SDK_RETRY_ATTEMPTS || !SdkAgentInvoker.isTransient(error)) {
-          throw error;
-        }
-        await SdkAgentInvoker.wait(attempt);
-      }
-    }
-  }
-
+  // Transient failures are retried by the openai client itself (its maxRetries defaults to 2 and
+  // nothing here overrides it), so this layer adds none of its own. A schema failure is not a
+  // transport failure and is never retried here: the executor decides what to do with it.
   private async runOnce(
     built: BuiltAgent,
     inputText: string,
@@ -238,27 +212,5 @@ export class SdkAgentInvoker implements AgentInvoker {
 
   private static hashOf(instructions: string): string {
     return createHash(INSTRUCTIONS_HASH_ALGORITHM).update(instructions).digest('hex');
-  }
-
-  private static isTransient(error: unknown): boolean {
-    if (SdkErrorMapper.map(error) !== AgentFailureKind.ApiError) {
-      return false;
-    }
-    if (typeof error !== 'object' || error === null) {
-      return false;
-    }
-    const { status, code } = error as { status?: unknown; code?: unknown };
-    if (typeof status === 'number') {
-      return status === TOO_MANY_REQUESTS || status >= SERVER_ERROR;
-    }
-    return typeof code === 'string' && TRANSIENT_ERROR_CODES.includes(code);
-  }
-
-  private static async wait(attempt: number): Promise<void> {
-    const delay = Math.min(
-      SDK_RETRY_BASE_DELAY_MS * RETRY_BACKOFF_FACTOR ** (attempt - FIRST_ATTEMPT),
-      SDK_RETRY_MAX_DELAY_MS,
-    );
-    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 }

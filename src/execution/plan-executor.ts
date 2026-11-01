@@ -25,13 +25,12 @@ import { AgentCallRunner } from './agents/agent-call.runner';
 import { AgentFailureKind } from './agents/agent-failure.enum';
 import { AgentFailurePolicy } from './agents/agent-failure.policy';
 import { AgentInvocationError } from './agents/agent-invocation.error';
-import type { AgentInvoker } from './agents/agent-invoker.port.types';
+import type { AgentInvokerFactory } from './agents/agent-invoker-factory.port.types';
 import { BudgetExhaustedError } from './budget/budget-exhausted.error';
 import { RunBudget } from './budget/run-budget';
 import { StepCheckpoint } from './checkpoint/step-checkpoint';
 import {
-  AGENT_INVOKER,
-  ATTEMPT_REPOSITORY,
+  AGENT_INVOKER_FACTORY,
   DEFAULT_RUN_TIMEOUT_MS,
   DEFAULT_TOKEN_BUDGET,
   FIRST_ATTEMPT,
@@ -45,7 +44,6 @@ import {
 import { ExecutionMessages } from './execution.messages';
 import type { RunOutcome, RunRequest, StepOutcome, StepRunResult } from './execution.types';
 import type { UserPrompter } from './interaction/user-prompter.port.types';
-import type { AttemptRepository } from './persistence/attempt-repository.port.types';
 import type { PlanRepository } from './persistence/plan-repository.port.types';
 import { RunReportBuilder } from './report/run-report.builder';
 import { RunReportFormatter } from './report/run-report.formatter';
@@ -59,7 +57,8 @@ import { StepStatus } from './step-status.enum';
 import { WorkspaceSurveyor } from './workspace.surveyor';
 
 const EMPTY = 0;
-const NO_SCOPE = { stepIndex: null, attempt: null };
+const NO_SCOPE = { stepIndex: null, attempt: null, attemptId: null };
+const CONFIRMATION_ANSWERS: readonly string[] = ['y', 'yes'];
 
 // Owns one run: preflight, planning, the ordered steps, the budget and the final report. It
 // reaches the agents only through the AgentInvoker port, so no SDK type ever enters this layer,
@@ -72,13 +71,17 @@ export class PlanExecutor {
     @Inject(StepRunner) private readonly stepRunner: StepRunner,
     @Inject(WorkspaceSurveyor) private readonly surveyor: WorkspaceSurveyor,
     @Inject(EventBus) private readonly events: EventBus,
-    @Inject(AGENT_INVOKER) private readonly invoker: AgentInvoker,
+    @Inject(AGENT_INVOKER_FACTORY) private readonly invokers: AgentInvokerFactory,
     @Inject(PLAN_REPOSITORY) private readonly plans: PlanRepository,
-    @Inject(ATTEMPT_REPOSITORY) private readonly attempts: AttemptRepository,
     @Optional() @Inject(USER_PROMPTER) private readonly prompter: UserPrompter | null = null,
   ) {}
 
-  async execute(request: RunRequest): Promise<RunOutcome> {
+  // `invokers` is passed only by `team run --dry-run`, which hands in the canned invoker; every
+  // other caller gets the SDK factory this executor was built with.
+  async execute(
+    request: RunRequest,
+    invokers: AgentInvokerFactory = this.invokers,
+  ): Promise<RunOutcome> {
     const state = new RunState(Date.now());
     const budget = new RunBudget(request.tokenBudget ?? DEFAULT_TOKEN_BUDGET);
     const ledger = new AgentCallLedger();
@@ -90,9 +93,8 @@ export class PlanExecutor {
     );
     timeout.unref();
     const caller = new AgentCallRunner(
-      this.invoker,
+      invokers,
       this.events,
-      this.attempts,
       ledger,
       budget,
       request.runId,
@@ -111,7 +113,11 @@ export class PlanExecutor {
       if (plan !== null) {
         state.plan = plan;
         await this.publishPlan(request, plan);
-        await this.runSteps(request, state, plan, budget, caller, controller.signal);
+        if (await this.confirmed(request)) {
+          await this.runSteps(request, state, plan, budget, caller, controller.signal);
+        } else {
+          state.stop(RunStatus.Cancelled, ExecutionMessages.planRejected());
+        }
       }
     } catch (error) {
       PlanExecutor.stopOn(state, error, controller.signal);
@@ -206,10 +212,22 @@ export class PlanExecutor {
     }));
   }
 
+  // A real run spends money, so an attended run is asked once, after the plan is visible and
+  // before any step starts. An unattended run, or one started with --yes, goes ahead.
+  private async confirmed(request: RunRequest): Promise<boolean> {
+    if (request.autoApprove || !request.attended || this.prompter === null) {
+      return true;
+    }
+    const [answer] = await this.prompter.ask([ExecutionMessages.confirmPlan()]);
+
+    return CONFIRMATION_ANSWERS.includes((answer ?? '').trim().toLowerCase());
+  }
+
   private async publishPlan(request: RunRequest, plan: RunPlan): Promise<void> {
     await this.plans.createPlan({
       runId: request.runId,
       summary: plan.summary,
+      assumptions: plan.assumptions,
       steps: plan.steps,
     });
     await this.write(PLAN_FILE_NAME, PlanFormatter.markdown(plan, new Date()));
@@ -220,6 +238,7 @@ export class PlanExecutor {
       at: Date.now(),
       steps: plan.steps.length,
       summary: plan.summary,
+      plan: plan.steps,
     });
   }
 
@@ -234,9 +253,15 @@ export class PlanExecutor {
     signal: AbortSignal,
   ): Promise<void> {
     const total = plan.steps.length;
+    const allowed = request.maxSteps ?? total;
 
     for (const [position, planStep] of plan.steps.entries()) {
       const step = PlanExecutor.stepContext(planStep, position + FIRST_STEP_INDEX, total);
+      if (step.index > allowed) {
+        await this.skipOverLimit(request, state, plan, allowed);
+        state.stop(RunStatus.Failed, ExecutionMessages.stepLimitReached(total, allowed));
+        return;
+      }
       this.events.emit({
         kind: AgentEventKind.StepStarted,
         runId: request.runId,
@@ -355,6 +380,37 @@ export class PlanExecutor {
     });
   }
 
+  private async skipOverLimit(
+    request: RunRequest,
+    state: RunState,
+    plan: RunPlan,
+    allowed: number,
+  ): Promise<void> {
+    for (const [position, planStep] of plan.steps.entries()) {
+      const index = position + FIRST_STEP_INDEX;
+      if (index <= allowed) {
+        continue;
+      }
+      await this.plans.updateStepStatus({
+        runId: request.runId,
+        index,
+        status: StepStatus.Skipped,
+        failureReason: ExecutionMessages.skippedOverStepLimit(allowed),
+      });
+      state.addStep({
+        index,
+        title: planStep.title,
+        status: StepStatus.Skipped,
+        summary: '',
+        commitSha: null,
+        failureReason: null,
+        note: ExecutionMessages.skippedOverStepLimit(allowed),
+        attempts: [],
+        deferredIssues: [],
+      });
+    }
+  }
+
   private async skipRemaining(
     request: RunRequest,
     state: RunState,
@@ -413,7 +469,7 @@ export class PlanExecutor {
       runId: request.runId,
       status: state.status,
       reportPath,
-      tokensTotal: ledger.tokensTotal(),
+      failureReason: state.stoppedReason,
     });
     this.events.emit({
       kind: AgentEventKind.RunFinished,

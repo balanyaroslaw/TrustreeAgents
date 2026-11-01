@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { stat } from 'node:fs/promises';
 import { CommandPolicy } from '../../commands/command.policy';
 import { CommandRisk } from '../../commands/command-risk.enum';
@@ -19,7 +19,7 @@ const ARGUMENT_SEPARATOR = ' ';
 
 @Injectable()
 export class RunCommandValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedCommandRequest> {
     if (process.platform === WINDOWS_PLATFORM) {

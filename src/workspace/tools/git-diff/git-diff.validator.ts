@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { GIT_DEFAULT_BASE_REF, GIT_REF_PATTERN, MAX_GIT_REF_LENGTH } from '../../git/git.constants';
 import { GitService } from '../../git/git.service';
@@ -13,8 +13,8 @@ import type { ValidatedDiffRequest } from './git-diff.types';
 @Injectable()
 export class GitDiffValidator {
   constructor(
-    private readonly workspace: WorkspaceService,
-    private readonly git: GitService,
+    @Inject(WorkspaceService) private readonly workspace: WorkspaceService,
+    @Inject(GitService) private readonly git: GitService,
   ) {}
 
   async validate(input: unknown): Promise<ValidatedDiffRequest> {

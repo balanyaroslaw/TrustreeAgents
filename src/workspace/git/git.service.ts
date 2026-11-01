@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { GitError } from '../errors/git.error';
 import { WorkspaceService } from '../workspace.service';
@@ -51,7 +51,7 @@ const STATUS_CODE_INDEX = 0;
 
 @Injectable()
 export class GitService {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async isRepository(): Promise<boolean> {
     const result = await this.run(['rev-parse', '--is-inside-work-tree'], [FATAL_EXIT_CODE]);

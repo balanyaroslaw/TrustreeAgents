@@ -6,24 +6,23 @@ import type { EventBus } from '../../events/event-bus';
 import type { RunBudget } from '../budget/run-budget';
 import { AGENT_RETRY_ATTEMPTS, REQUIRED_CALL_TOKEN_RESERVE } from '../execution.constants';
 import type { AgentCallRecord } from '../execution.types';
-import type { AttemptRepository } from '../persistence/attempt-repository.port.types';
 import { AgentFailureKind } from './agent-failure.enum';
 import { AgentInvocationError } from './agent-invocation.error';
 import type { AgentCallLedger } from './agent-call.ledger';
 import type { AgentInvocation, AgentCallScope, AgentUsage } from './agent-invocation.types';
-import type { AgentInvoker } from './agent-invoker.port.types';
+import type { AgentInvokerFactory } from './agent-invoker-factory.port.types';
 
 const FIRST_TRY = 0;
 const NO_TOOL_CALLS = 0;
 
 // One instance per run: it is the only place agent calls happen. Every call is checked against
-// the abort signal and the budget first, charged and recorded afterwards, and retried once when
-// the model breaks its output schema.
+// the abort signal and the budget first, charged afterwards, and retried once when the model
+// breaks its output schema. The invoker is asked for per call, scoped to the attempt the call
+// belongs to, so the row the invoker writes carries that attempt.
 export class AgentCallRunner {
   constructor(
-    private readonly invoker: AgentInvoker,
+    private readonly invokers: AgentInvokerFactory,
     private readonly events: EventBus,
-    private readonly attempts: AttemptRepository,
     private readonly ledger: AgentCallLedger,
     private readonly budget: RunBudget,
     private readonly runId: string,
@@ -83,13 +82,19 @@ export class AgentCallRunner {
       origin,
     });
     const started = Date.now();
+    const invoker = this.invokers.forScope({
+      runId: this.runId,
+      attemptId: scope.attemptId,
+      stepIndex: scope.stepIndex,
+      attempt: scope.attempt,
+    });
 
     try {
       const invocation =
         task === null
-          ? await this.invoker.invokeAgent<TOutput>(role, inputText, this.signal)
-          : await this.invoker.invokeOrchestrator<TOutput>(task, inputText, this.signal);
-      await this.account(
+          ? await invoker.invokeAgent<TOutput>(role, inputText, this.signal)
+          : await invoker.invokeOrchestrator<TOutput>(task, inputText, this.signal);
+      this.account(
         origin,
         invocation.usage,
         invocation.toolCalls,
@@ -100,7 +105,7 @@ export class AgentCallRunner {
       return invocation;
     } catch (error) {
       if (error instanceof AgentInvocationError) {
-        await this.account(
+        this.account(
           origin,
           error.partial.usage,
           NO_TOOL_CALLS,
@@ -113,14 +118,14 @@ export class AgentCallRunner {
     }
   }
 
-  private async account(
+  private account(
     origin: AgentCallOrigin,
     usage: AgentUsage,
     toolCalls: number,
     commandRuns: number,
     durationMs: number,
     failure: AgentFailureKind | null,
-  ): Promise<void> {
+  ): void {
     const record: AgentCallRecord = {
       runId: this.runId,
       role: origin.role,
@@ -138,8 +143,11 @@ export class AgentCallRunner {
       durationMs,
       failure,
     };
+    // agent_calls is written by the invoker, which is the only path to a model; the ledger is
+    // the in-memory view the report is built from. The events below are emitted here and not in
+    // the invoker, so they read the same whichever invoker ran the call: the invoker is asked for
+    // them with lifecycleEvents off.
     this.ledger.record(record);
-    await this.attempts.appendAgentCall(record);
 
     const at = Date.now();
     this.events.emit({

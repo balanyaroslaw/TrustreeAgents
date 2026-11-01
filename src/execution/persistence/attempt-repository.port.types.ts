@@ -1,10 +1,9 @@
-import type { AgentCallRecord } from '../execution.types';
-import type { AttemptRecord } from './persistence.types';
+import type { AttemptCompletion, NewAttempt } from './persistence.types';
 
-// Attempts and the per-call token usage. The agent calls carry their step and attempt, so the
-// usage of a run can be broken down per step.
+// The attempts of a step. An attempt is opened before its agents run so the agent calls it pays
+// for can be written with its id, and completed afterwards with the reports and the decision.
+// The PostgreSQL implementation is AttemptRepository in src/db/repositories.
 export interface AttemptRepository {
-  appendAttempt(attempt: AttemptRecord): Promise<void>;
-  appendAgentCall(call: AgentCallRecord): Promise<void>;
-  attemptsOf(runId: string, stepIndex: number): Promise<readonly AttemptRecord[]>;
+  openAttempt(attempt: NewAttempt): Promise<string | null>;
+  completeAttempt(completion: AttemptCompletion): Promise<void>;
 }

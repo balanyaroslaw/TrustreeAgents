@@ -13,6 +13,10 @@ export const STEP_AGENT_SEQUENCE: readonly DefinedAgentRole[] = [
 ];
 
 export const DEFAULT_TOKEN_BUDGET = 2_000_000;
+
+// What `team run` uses when no --budget is given. A real run spends money, so the default is the
+// conservative one and the large budget above has to be asked for.
+export const CONSERVATIVE_TOKEN_BUDGET = 200_000;
 export const DEFAULT_RUN_TIMEOUT_MS = 2 * 60 * 60 * 1_000;
 export const AGENT_RETRY_ATTEMPTS = 1;
 
@@ -71,7 +75,7 @@ export const MAX_LISTED_DIRTY_PATHS = 8;
 
 export const IMMEDIATE_EXIT_CODE = 130;
 
-export const AGENT_INVOKER = 'AGENT_INVOKER';
+export const AGENT_INVOKER_FACTORY = 'AGENT_INVOKER_FACTORY';
 export const USER_PROMPTER = 'USER_PROMPTER';
 export const PLAN_REPOSITORY = 'PLAN_REPOSITORY';
 export const ATTEMPT_REPOSITORY = 'ATTEMPT_REPOSITORY';

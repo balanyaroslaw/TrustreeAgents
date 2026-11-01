@@ -1,87 +1,78 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { StepStatus as DbStepStatus } from '@prisma/client';
 import { JsonValue } from '../json.value';
 import { PrismaService } from '../prisma.service';
+import { STEP_STATUS_TO_DB } from '../db.constants';
+import type {
+  NewRun,
+  PlanDraft,
+  RunClosure,
+  StepStatusUpdate,
+} from '../../execution/persistence/persistence.types';
+import type { PlanRepository as PlanRepositoryPort } from '../../execution/persistence/plan-repository.port.types';
+import { FIRST_STEP_INDEX } from '../../execution/execution.constants';
 import { GuardedRepository } from './guarded.repository';
-import { PlanStepMapper } from './plan-step.mapper';
-import type { NewPlanStep, PlanStepRecord } from './plan.repository.types';
+import { RunRepository } from './run.repository';
 
+// The plan of a run as the executor needs it. Steps are addressed by their position in the plan,
+// which is what the executor knows, and resolved to their row here. The columns of the run row
+// itself stay with RunRepository, so one row is never written by two repositories.
 @Injectable()
-export class PlanRepository extends GuardedRepository {
-  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {
+export class PlanRepository extends GuardedRepository implements PlanRepositoryPort {
+  constructor(
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RunRepository) private readonly runs: RunRepository,
+  ) {
     super();
   }
 
-  // The steps of a plan are written once, in their plan order.
-  async createSteps(runId: string, steps: readonly NewPlanStep[]): Promise<PlanStepRecord[]> {
-    const created = await this.prisma.$transaction(
-      steps.map((step) =>
-        this.prisma.planStep.create({
-          data: {
-            runId,
-            index: step.index,
-            title: step.title,
-            description: step.description,
-            acceptanceCriteria: JsonValue.required(step.acceptanceCriteria),
-          },
-        }),
-      ),
-    );
-
-    return created.map(PlanStepMapper.toRecord);
+  // The run row is created by the command that owns the project; what the executor adds is the
+  // branch it works on.
+  async openRun(run: NewRun): Promise<void> {
+    await this.runs.setBranch(run.runId, run.branch);
   }
 
-  async startStep(stepId: string): Promise<string | null> {
-    return this.guardWrite('start the step', () =>
-      this.prisma.planStep.update({
-        where: { id: stepId },
-        data: { status: DbStepStatus.in_progress, startedAt: new Date() },
+  // The steps of a plan are written once, in their plan order.
+  async createPlan(plan: PlanDraft): Promise<void> {
+    await this.runs.setPlan(plan.runId, plan.summary, plan.assumptions);
+    await this.guardWrite('create the plan steps', () =>
+      this.prisma.planStep.createMany({
+        data: plan.steps.map((step, position) => ({
+          runId: plan.runId,
+          index: position + FIRST_STEP_INDEX,
+          title: step.title,
+          description: step.description,
+          acceptanceCriteria: JsonValue.required(step.acceptanceCriteria),
+        })),
       }),
     );
   }
 
-  async acceptStep(
-    stepId: string,
-    summary: string,
-    commitSha: string | null,
-  ): Promise<string | null> {
-    return this.guardWrite('accept the step', () =>
+  async updateStepStatus(update: StepStatusUpdate): Promise<void> {
+    await this.guardWrite('update the step', () =>
       this.prisma.planStep.update({
-        where: { id: stepId },
+        where: { runId_index: { runId: update.runId, index: update.index } },
         data: {
-          status: DbStepStatus.accepted,
-          summary,
-          commitSha,
-          finishedAt: new Date(),
+          status: STEP_STATUS_TO_DB[update.status],
+          ...(update.attempts === undefined ? {} : { attemptsUsed: update.attempts }),
+          ...(update.summary === undefined ? {} : { summary: update.summary }),
+          ...(update.commitSha === undefined ? {} : { commitSha: update.commitSha }),
+          ...(update.failureReason === undefined ? {} : { failureReason: update.failureReason }),
+          ...(update.startedAt === undefined ? {} : { startedAt: update.startedAt }),
+          ...(update.finishedAt === undefined ? {} : { finishedAt: update.finishedAt }),
         },
       }),
     );
   }
 
-  async failStep(stepId: string, reason: string): Promise<string | null> {
-    return this.guardWrite('fail the step', () =>
-      this.prisma.planStep.update({
-        where: { id: stepId },
-        data: { status: DbStepStatus.failed, failureReason: reason, finishedAt: new Date() },
-      }),
+  // The tokens and cost of the run are recomputed from its agent calls, so the closed row never
+  // carries a total kept by hand.
+  async closeRun(closure: RunClosure): Promise<void> {
+    await this.runs.recomputeTotals(closure.runId);
+    await this.runs.close(
+      closure.runId,
+      closure.status,
+      closure.reportPath,
+      closure.failureReason,
     );
-  }
-
-  async skipStep(stepId: string, reason: string): Promise<string | null> {
-    return this.guardWrite('skip the step', () =>
-      this.prisma.planStep.update({
-        where: { id: stepId },
-        data: { status: DbStepStatus.skipped, failureReason: reason },
-      }),
-    );
-  }
-
-  async stepsOf(runId: string): Promise<PlanStepRecord[]> {
-    const steps = await this.prisma.planStep.findMany({
-      where: { runId },
-      orderBy: { index: 'asc' },
-    });
-
-    return steps.map(PlanStepMapper.toRecord);
   }
 }

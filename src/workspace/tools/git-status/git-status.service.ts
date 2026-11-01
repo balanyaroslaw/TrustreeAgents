@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { GitChangeKind } from '../../git/git-change-kind.enum';
 import {
   ADDED_STATUS_CODE,
@@ -19,7 +19,7 @@ const LINE_BREAK = '\n';
 
 @Injectable()
 export class GitStatusService {
-  constructor(private readonly git: GitService) {}
+  constructor(@Inject(GitService) private readonly git: GitService) {}
 
   async status(): Promise<string> {
     const branch = (await this.git.currentBranch()) ?? DETACHED_HEAD_LABEL;

@@ -108,12 +108,14 @@ export class HistoryFormatter {
   private static attempt(attempt: StepAttemptRecord): string {
     const decision = attempt.effectiveDecision ?? NO_DECISION;
     const overridden = attempt.overridden ? `${FIELD_SEPARATOR}${OVERRIDDEN_LABEL}` : '';
+    // An attempt the code ended carries no decision, so the note is what explains it.
+    const note = attempt.note === null ? '' : `${FIELD_SEPARATOR}${attempt.note}`;
 
     return (
       `${INDENT}${ATTEMPT_LABEL} ${attempt.attempt}: ${decision}${overridden}` +
       `${FIELD_SEPARATOR}${CompactNumberFormatter.format(attempt.tokensTotal)} tokens` +
       `${FIELD_SEPARATOR}${MoneyFormatter.usd(attempt.costUsd)}` +
-      `${FIELD_SEPARATOR}${DurationFormatter.format(attempt.durationMs)}`
+      `${FIELD_SEPARATOR}${DurationFormatter.format(attempt.durationMs)}${note}`
     );
   }
 }

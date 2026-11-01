@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { stat } from 'node:fs/promises';
 import { ToolValidationError } from '../../errors/tool-validation.error';
 import { BinaryDetector } from '../../security/binary.detector';
@@ -13,7 +13,7 @@ import type { ValidatedReadFileRequest } from './read-file.types';
 
 @Injectable()
 export class ReadFileValidator {
-  constructor(private readonly workspace: WorkspaceService) {}
+  constructor(@Inject(WorkspaceService) private readonly workspace: WorkspaceService) {}
 
   async validate(input: unknown): Promise<ValidatedReadFileRequest> {
     const parsed = readFileSchema.safeParse(input);
