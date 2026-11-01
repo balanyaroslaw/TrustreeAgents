@@ -63,3 +63,34 @@ its decisions.
 Every decision passes through `DecisionGuard`, which may override it on recorded facts; overrides
 are stored and reported, never silent.
 Findings of other agents are forwarded to the Developer verbatim by `ReworkBriefBuilder`.
+
+### Execution
+
+`PlanExecutor` owns the run: planning, the ordered steps, attempts, budget and the final report.
+`StepRunner` owns one step.
+Agents are reached only through the `AgentInvoker` port, so core code never imports the SDK.
+Decisions pass through `DecisionGuard`; accepted steps are committed one per step on the run
+branch; nothing is ever pushed.
+
+### Database
+
+- DB: PostgreSQL 16 via docker-compose, **Prisma** (`prisma/schema.prisma`), migrations only
+  (`prisma migrate`).
+- All DB changes go through Prisma migrations in `prisma/migrations`. Only repositories in
+  `src/db/repositories` use `PrismaService`.
+- Model prices live in the `model_prices` table and are applied by `CostCalculator`, never
+  hardcoded in logic. Money is `Decimal`, never float: it becomes a number only where it is
+  displayed.
+- A database write must never lose agent work: everything except the run row is guarded, logged
+  and reported as a warning instead of throwing.
+
+### SDK boundary
+
+Only `src/sdk` imports `@openai/agents`. The rest of the code talks to agents through the
+`AgentInvoker` port.
+Every model call is recorded by the invoker through `AgentCallRepository`: there is no path to a
+model that is not accounted for.
+A fresh `Agent` and a fresh `AgentCallContext` are built per call, because tools carry that
+call's recorders.
+Output schemas live in `AgentOutputRegistry`; models per role come from `agents.config.ts` with
+env overrides.

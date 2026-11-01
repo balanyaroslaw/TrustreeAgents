@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AgentCallStore } from './activity/agent-call.store';
 import { APPROVAL_GATE } from './approval/approval.constants';
 import { LoggingApprovalGate } from './approval/logging-approval-gate';
 import { CommandLock } from './commands/command.lock';
@@ -31,13 +32,15 @@ import { SearchCodeTool } from './tools/search-code/search-code.tool';
 import { SearchCodeValidator } from './tools/search-code/search-code.validator';
 import { WriteFileValidator } from './tools/write-file/write-file.validator';
 import { WORKSPACE_ROOT } from './workspace.constants';
+import { WorkspaceRootResolver } from './workspace-root.resolver';
 import { WorkspaceService } from './workspace.service';
 
 @Module({
   providers: [
-    { provide: WORKSPACE_ROOT, useFactory: () => process.cwd() },
+    { provide: WORKSPACE_ROOT, useFactory: () => WorkspaceRootResolver.fromArgv(process.argv) },
     WorkspaceService,
     GitService,
+    AgentCallStore,
     ReadFileValidator,
     ReadFileService,
     ReadFileTool,
@@ -68,6 +71,6 @@ import { WorkspaceService } from './workspace.service';
     RunCommandTool,
     FileToolRegistry,
   ],
-  exports: [WorkspaceService, GitService, FileToolRegistry],
+  exports: [WorkspaceService, GitService, FileToolRegistry, AgentCallStore],
 })
 export class WorkspaceModule {}

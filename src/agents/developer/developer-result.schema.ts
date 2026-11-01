@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ChangeAction } from './change-action.enum';
+import { ChangeAction } from '../../workspace/activity/change-action.enum';
 import { DeveloperStatus } from './developer-status.enum';
 import { MIN_CHANGE_DESCRIPTION_CHARACTERS, MIN_SUMMARY_CHARACTERS } from './developer.constants';
 

@@ -1,4 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
+import { AgentCallStore } from '../../activity/agent-call.store';
+import { ChangeAction } from '../../activity/change-action.enum';
 import { AtomicFileWriter } from '../../io/atomic-file.writer';
 import { TextContent } from '../../utils/text-content';
 import { WorkspaceMessages } from '../../workspace.messages';
@@ -8,6 +10,8 @@ const SINGLE_REPLACEMENT = 1;
 
 @Injectable()
 export class EditFileService {
+  constructor(@Inject(AgentCallStore) private readonly calls: AgentCallStore) {}
+
   async edit(request: ValidatedEditRequest): Promise<string> {
     const { absolutePath, relativePath, content, oldString, newString, replaceAll, occurrences } =
       request;
@@ -18,6 +22,7 @@ export class EditFileService {
       : EditFileService.replaceFirst(content, oldString, newString);
 
     await AtomicFileWriter.replace(absolutePath, updated, request.mode);
+    this.calls.current()?.changes.record(relativePath, ChangeAction.Modified);
 
     return WorkspaceMessages.editResult(
       relativePath,

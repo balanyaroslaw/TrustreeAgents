@@ -12,6 +12,11 @@ export interface GitStatusEntry {
   readonly originalPath: string | null;
 }
 
+export interface GitIdentity {
+  readonly name: string;
+  readonly email: string;
+}
+
 export interface GitGrepRequest {
   readonly pattern: string;
   readonly literal: boolean;

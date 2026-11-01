@@ -22,6 +22,7 @@ export const GIT_ANY_DIRECTORY_GLOB = '**';
 export const DEV_NULL_PATH = '/dev/null';
 
 export const GIT_DEFAULT_BASE_REF = 'HEAD';
+export const GIT_INITIAL_BRANCH = 'main';
 export const GIT_REF_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._/~^@{}-]*$/;
 export const MAX_GIT_REF_LENGTH = 100;
 
@@ -80,5 +81,8 @@ export const INVALID_PATTERN_STDERR_MARKERS: readonly string[] = [
 export const INVALID_PATTERN_MESSAGE =
   'invalid regular expression. Fix the pattern or set literal to true';
 export const INVALID_GIT_REF_HINT = 'Pass a branch name, a tag or a commit that exists';
+export const GIT_USER_NAME_KEY = 'user.name';
+export const GIT_USER_EMAIL_KEY = 'user.email';
+
 export const GIT_TIMEOUT_MESSAGE =
   'git took too long or produced too much output and was stopped. Request a specific path';

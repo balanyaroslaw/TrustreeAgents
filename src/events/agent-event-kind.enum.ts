@@ -1,0 +1,17 @@
+export enum AgentEventKind {
+  PlanRequested = 'plan_requested',
+  PlanCreated = 'plan_created',
+  PlanQuestions = 'plan_questions',
+  StepStarted = 'step_started',
+  AttemptStarted = 'attempt_started',
+  DecisionMade = 'decision_made',
+  DecisionOverridden = 'decision_overridden',
+  StepAccepted = 'step_accepted',
+  StepFailed = 'step_failed',
+  BudgetUpdated = 'budget_updated',
+  RunFinished = 'run_finished',
+  AgentStarted = 'agent_started',
+  ToolCalled = 'tool_called',
+  TokensUsed = 'tokens_used',
+  AgentFinished = 'agent_finished',
+}

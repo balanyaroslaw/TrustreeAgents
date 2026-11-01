@@ -1,8 +1,8 @@
 # TrusteeAgent CLI
 
 A NestJS application that runs purely as a CLI (no HTTP server, no controllers) built with
-[`nest-commander`](https://nest-commander.jaymcdoniel.dev/). All commands are stubs for now —
-they only print text.
+[`nest-commander`](https://nest-commander.jaymcdoniel.dev/). `run` is still a stub; `agent`,
+`tools`, `usage`, `history`, `prices` and `runs:prune` do real work.
 
 ## Requirements
 
@@ -47,10 +47,36 @@ npm run team -- run "demo" --no-tui
 
 Without a prompt the command prints an error and exits with code `1`.
 
+### `agent`
+
+Runs **one** agent against the workspace and prints its report. It needs `OPENAI_API_KEY` in
+`.env`; it creates no branch and no commit, and the call is recorded in `agent_calls`.
+
+```bash
+npm run team -- agent developer "Add a sum(a, b) function in src/math.ts and export it" -w ../tmp-ws
+npm run team -- agent reviewer "Review the current changes" -w ../tmp-ws
+npm run team -- agent orchestrator:plan "Create a payment simulator" -w ../empty-ws
+```
+
+Roles: `developer`, `qa`, `reviewer`, `orchestrator:plan`. Options: `-w, --workspace <path>`,
+`--no-stream` (wait for the whole answer instead of showing live tool calls),
+`--max-turns <n>`.
+
+### `tools`
+
+Lists the workspace tools, whether they write and whether they need approval, and which tools
+each role may use. Needs no API key.
+
+```bash
+npm run team -- tools
+```
+
 ### `agents`
 
 Prints the four agents of the team (name and role). The list lives in
-`src/agents/agents.config.ts`.
+`src/agents/agents.constants.ts`; the model each role runs on lives in
+`src/agents/agents.config.ts` and can be overridden with `ORCHESTRATOR_MODEL`,
+`DEVELOPER_MODEL`, `QA_MODEL` and `REVIEWER_MODEL`.
 
 ```bash
 npm run team -- agents
@@ -106,6 +132,11 @@ All settings come from `.env`: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_D
 
 | Script             | What it does                                                                                               |
 | ------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `npm run db:generate` | Generates the Prisma client from `prisma/schema.prisma` (also runs on install and before a build). |
+| `npm run db:migrate` | Applies the pending migrations (`prisma migrate deploy`). Commands that need the database do this themselves. |
+| `npm run db:migrate:dev` | Creates a new migration from a schema change (development only).                                      |
+| `npm run db:seed`  | Upserts the model prices of `prisma/seed.ts`. Runs automatically when the table is empty.                  |
+| `npm run db:studio` | Opens Prisma Studio against the database.                                                                |
 | `npm run db:up`    | Starts the `postgres` container in the background and waits for its healthcheck.                           |
 | `npm run db:down`  | Stops and removes the container. **The data is kept** — the `postgres_data` volume stays.                  |
 | `npm run db:reset` | Removes the container **and its volume**, then starts fresh. **All data is lost — this cannot be undone.** |

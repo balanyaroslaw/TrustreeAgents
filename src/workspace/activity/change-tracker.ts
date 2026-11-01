@@ -1,6 +1,6 @@
-import { ActivityClock } from '../../workspace/activity/activity-clock';
+import { ActivityClock } from './activity-clock';
 import { ChangeAction } from './change-action.enum';
-import type { TrackedChange } from './developer-report.types';
+import type { TrackedChange } from './tracked-change.types';
 
 export class ChangeTracker {
   private readonly changes = new Map<string, TrackedChange>();

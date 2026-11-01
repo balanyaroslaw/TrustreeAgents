@@ -7,6 +7,10 @@ import { ReadTruncation } from './tools/read-file/read-truncation.enum';
 import { WriteOutcome } from './tools/write-file/write-outcome.enum';
 
 export class WorkspaceMessages {
+  static workspaceNotFound(requested: string): string {
+    return `error: the workspace path "${requested}" does not exist. Create it or pass an existing path with -w`;
+  }
+
   static error(reason: string): string {
     return `${ERROR_PREFIX}${reason}`;
   }

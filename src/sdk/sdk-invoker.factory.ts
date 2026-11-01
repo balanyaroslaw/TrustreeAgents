@@ -1,0 +1,33 @@
+import { Inject, Injectable } from '@nestjs/common';
+import { AgentCallRepository } from '../db/repositories/agent-call.repository';
+import { EventBus } from '../events/event-bus';
+import { AgentCallStore } from '../workspace/activity/agent-call.store';
+import { AgentFactory } from './agent.factory';
+import type { CallScope, InvokerOptions } from './call-scope.types';
+import { SdkAgentInvoker } from './sdk-agent-invoker';
+import { SdkBootstrap } from './sdk.bootstrap';
+
+// One invoker per unit of work: `team agent` creates one for its single call, the executor one
+// per run. The scope it is created with is what every call of that unit is recorded under.
+@Injectable()
+export class SdkInvokerFactory {
+  constructor(
+    @Inject(AgentFactory) private readonly agents: AgentFactory,
+    @Inject(SdkBootstrap) private readonly bootstrap: SdkBootstrap,
+    @Inject(AgentCallStore) private readonly store: AgentCallStore,
+    @Inject(AgentCallRepository) private readonly calls: AgentCallRepository,
+    @Inject(EventBus) private readonly events: EventBus,
+  ) {}
+
+  create(scope: CallScope, options: InvokerOptions = {}): SdkAgentInvoker {
+    return new SdkAgentInvoker(
+      this.agents,
+      this.bootstrap,
+      this.store,
+      this.calls,
+      this.events,
+      scope,
+      options,
+    );
+  }
+}

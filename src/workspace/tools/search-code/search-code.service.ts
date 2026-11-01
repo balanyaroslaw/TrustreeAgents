@@ -1,5 +1,5 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
-import { FileAccessRecorder } from '../../activity/file-access.recorder';
+import { Inject, Injectable } from '@nestjs/common';
+import { AgentCallStore } from '../../activity/agent-call.store';
 import { GitService } from '../../git/git.service';
 import { PathPolicy } from '../../security/path.policy';
 import { WorkspaceMessages } from '../../workspace.messages';
@@ -21,10 +21,10 @@ const WHOLE_WORKSPACE_SCOPE = 'the workspace';
 
 @Injectable()
 export class SearchCodeService {
-  // The recorder is present only while an agent call is running.
+  // The recorders are present only while an agent call is running.
   constructor(
     @Inject(GitService) private readonly git: GitService,
-    @Optional() @Inject(FileAccessRecorder) private readonly access?: FileAccessRecorder,
+    @Inject(AgentCallStore) private readonly calls: AgentCallStore,
   ) {}
 
   async search(request: ValidatedSearchRequest): Promise<string> {
@@ -34,8 +34,9 @@ export class SearchCodeService {
     const matchKeys = await this.matchKeys(request);
     const matches = lines.filter((line) => SearchCodeService.isMatch(line, matchKeys));
 
+    const files = this.calls.current()?.files;
     for (const match of matches) {
-      this.access?.record(match.path);
+      files?.record(match.path);
     }
 
     if (matches.length === 0) {
@@ -97,9 +98,9 @@ export class SearchCodeService {
       );
     }
 
-    const files = new Set(matches.map((line) => line.path)).size;
+    const matchedFiles = new Set(matches.map((line) => line.path)).size;
     const output = [
-      WorkspaceMessages.searchHeader(matches.length, files, request.pattern),
+      WorkspaceMessages.searchHeader(matches.length, matchedFiles, request.pattern),
       ...body,
     ];
     if (truncated) {

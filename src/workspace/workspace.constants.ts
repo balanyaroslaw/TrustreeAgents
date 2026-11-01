@@ -17,6 +17,10 @@ export const SKIPPED_NAMES: readonly string[] = [
   '.turbo',
 ];
 
+export const WORKSPACE_ARGUMENT_FLAGS: readonly string[] = ['-w', '--workspace'];
+export const WORKSPACE_ARGUMENT_PREFIX: readonly string[] = ['--workspace='];
+export const MISSING_WORKSPACE_EXIT_CODE = 1;
+
 export const BINARY_SNIFF_BYTES = 8 * 1024;
 
 export const BINARY_EXTENSIONS: readonly string[] = [

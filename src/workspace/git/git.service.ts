@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { execFile } from 'node:child_process';
 import { GitError } from '../errors/git.error';
 import { WorkspaceService } from '../workspace.service';
-import { SKIPPED_NAMES } from '../workspace.constants';
+import { CURRENT_DIRECTORY_SEGMENT, SKIPPED_NAMES } from '../workspace.constants';
 import {
   CHANGED_FILE_STATUS_BY_CODE,
   COPY_STATUS_CODE,
@@ -12,7 +12,9 @@ import {
   GIT_GLOB_PATHSPEC_PREFIX,
   GIT_BASE_ARGS,
   GIT_BINARY,
+  GIT_DEFAULT_BASE_REF,
   GIT_EXCLUDE_PATHSPEC_PREFIX,
+  GIT_INITIAL_BRANCH,
   GIT_MAX_BUFFER_BYTES,
   GIT_NUL_SEPARATOR,
   GIT_PATH_TERMINATOR,
@@ -22,11 +24,13 @@ import {
   NUMSTAT_BINARY_MARKER,
   NUMSTAT_FIELD_SEPARATOR,
   RENAME_STATUS_CODE,
+  GIT_USER_EMAIL_KEY,
+  GIT_USER_NAME_KEY,
 } from './git.constants';
 import { SEARCH_TIMEOUT_MS } from '../tools/file-tool.constants';
 import { ChangedFileStatus } from './changed-file-status.enum';
 import type { ChangedFile, LineCounts } from './changed-file.types';
-import type { GitCommandResult, GitGrepRequest, GitStatusEntry } from './git.types';
+import type { GitCommandResult, GitGrepRequest, GitIdentity, GitStatusEntry } from './git.types';
 
 const SUCCESS_EXIT_CODE = 0;
 const DIFFERENCES_EXIT_CODE = 1;
@@ -198,6 +202,70 @@ export class GitService {
     );
     const commit = result.stdout.trim();
     return commit === '' ? null : commit;
+  }
+
+  async init(): Promise<void> {
+    await this.run(['init', '--initial-branch', GIT_INITIAL_BRANCH]);
+  }
+
+  async createBranch(name: string): Promise<void> {
+    GitService.assertRef(name);
+    await this.run(['checkout', '-b', name]);
+  }
+
+  async stageAll(excludes: readonly string[] = []): Promise<void> {
+    await this.run(['add', '--all', GIT_PATH_TERMINATOR, CURRENT_DIRECTORY_SEGMENT, ...excludes]);
+  }
+
+  async stagePath(relativePath: string): Promise<void> {
+    await this.run(['add', GIT_PATH_TERMINATOR, relativePath]);
+  }
+
+  async hasStagedChanges(): Promise<boolean> {
+    const result = await this.run(['diff', '--cached', '--quiet'], [DIFFERENCES_EXIT_CODE]);
+    return result.exitCode === DIFFERENCES_EXIT_CODE;
+  }
+
+  // The identity is passed per call instead of written into the repository config, so a commit is
+  // possible in a fresh workspace without changing the settings of the user.
+  async commit(message: string, identity: GitIdentity | null = null): Promise<string | null> {
+    await this.run([
+      ...GitService.identityArgs(identity),
+      'commit',
+      '--no-verify',
+      '--no-gpg-sign',
+      '--message',
+      message,
+    ]);
+    return this.headCommit();
+  }
+
+  async headCommit(): Promise<string | null> {
+    return this.resolveCommit(GIT_DEFAULT_BASE_REF);
+  }
+
+  async identity(): Promise<GitIdentity | null> {
+    const name = await this.configValue(GIT_USER_NAME_KEY);
+    const email = await this.configValue(GIT_USER_EMAIL_KEY);
+    return name === null || email === null ? null : { name, email };
+  }
+
+  private async configValue(key: string): Promise<string | null> {
+    const result = await this.run(['config', '--get', key], [DIFFERENCES_EXIT_CODE]);
+    const value = result.stdout.trim();
+    return value === '' ? null : value;
+  }
+
+  private static identityArgs(identity: GitIdentity | null): string[] {
+    if (identity === null) {
+      return [];
+    }
+    return [
+      '-c',
+      `${GIT_USER_NAME_KEY}=${identity.name}`,
+      '-c',
+      `${GIT_USER_EMAIL_KEY}=${identity.email}`,
+    ];
   }
 
   private async run(

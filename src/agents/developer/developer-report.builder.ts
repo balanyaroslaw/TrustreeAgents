@@ -1,10 +1,10 @@
-import { ChangeAction } from './change-action.enum';
+import { ChangeAction } from '../../workspace/activity/change-action.enum';
+import type { TrackedChange } from '../../workspace/activity/tracked-change.types';
 import type {
   AgentRunUsage,
   DeveloperDiscrepancies,
   DeveloperMetrics,
   DeveloperReport,
-  TrackedChange,
 } from './developer-report.types';
 import type { DeveloperResult } from './developer-result.types';
 

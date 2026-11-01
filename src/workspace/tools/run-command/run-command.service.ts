@@ -1,10 +1,10 @@
-import { Inject, Injectable, Optional } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { spawn } from 'node:child_process';
 import type { ChildProcess } from 'node:child_process';
 import { APPROVAL_GATE } from '../../approval/approval.constants';
 import type { ApprovalGate } from '../../approval/approval-gate.types';
 import { ChildEnvironmentBuilder } from '../../commands/child-environment.builder';
-import { CommandRunRecorder } from '../../commands/command-run.recorder';
+import { AgentCallStore } from '../../activity/agent-call.store';
 import { CommandLock } from '../../commands/command.lock';
 import { CommandRisk } from '../../commands/command-risk.enum';
 import { OutputCollector } from '../../commands/output.collector';
@@ -31,7 +31,7 @@ export class RunCommandService {
     @Inject(CommandLock) private readonly lock: CommandLock,
     @Inject(APPROVAL_GATE) private readonly approvalGate: ApprovalGate,
     // Present only while an agent call is running; without it the command is simply not recorded.
-    @Optional() @Inject(CommandRunRecorder) private readonly recorder?: CommandRunRecorder,
+    @Inject(AgentCallStore) private readonly calls: AgentCallStore,
   ) {}
 
   async run(request: ValidatedCommandRequest): Promise<string> {
@@ -52,7 +52,7 @@ export class RunCommandService {
     const outcome = await this.spawnCommand(request);
     const output = RunCommandService.outputOf(outcome);
 
-    this.recorder?.record({
+    this.calls.current()?.commands.record({
       command: request.displayCommand,
       cwd: request.cwd,
       exitCode: outcome.exitCode,

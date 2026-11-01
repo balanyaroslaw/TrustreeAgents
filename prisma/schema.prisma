@@ -1,0 +1,160 @@
+// The whole schema of the agent team: projects, runs, plans, attempts, agent calls and prices.
+// Every table and column is snake_case, every timestamp is timestamptz, and money is Decimal.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RunStatus {
+  running
+  completed
+  failed
+  cancelled
+
+  @@map("run_status")
+}
+
+enum StepStatus {
+  pending
+  in_progress
+  accepted
+  failed
+  skipped
+
+  @@map("step_status")
+}
+
+enum AgentRole {
+  orchestrator
+  developer
+  qa
+  reviewer
+
+  @@map("agent_role")
+}
+
+enum DecisionKind {
+  accept
+  rework
+  abort
+
+  @@map("decision_kind")
+}
+
+model Project {
+  id        String   @id @default(uuid()) @db.Uuid
+  path      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  runs      Run[]
+
+  @@map("projects")
+}
+
+model Run {
+  id            String     @id @default(uuid()) @db.Uuid
+  projectId     String     @map("project_id") @db.Uuid
+  prompt        String
+  status        RunStatus  @default(running)
+  branch        String?
+  planSummary   String?    @map("plan_summary")
+  assumptions   Json?
+  reportPath    String?    @map("report_path")
+  tokensTotal   Int        @default(0) @map("tokens_total")
+  costUsd       Decimal    @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  startedAt     DateTime   @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt    DateTime?  @map("finished_at") @db.Timestamptz
+  failureReason String?    @map("failure_reason")
+  project       Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  steps         PlanStep[]
+  agentCalls    AgentCall[]
+
+  @@index([projectId, startedAt])
+  @@map("runs")
+}
+
+model PlanStep {
+  id                 String        @id @default(uuid()) @db.Uuid
+  runId              String        @map("run_id") @db.Uuid
+  index              Int
+  title              String
+  description        String
+  acceptanceCriteria Json          @map("acceptance_criteria")
+  status             StepStatus    @default(pending)
+  attemptsUsed       Int           @default(0) @map("attempts_used")
+  summary            String?
+  commitSha          String?       @map("commit_sha")
+  failureReason      String?       @map("failure_reason")
+  startedAt          DateTime?     @map("started_at") @db.Timestamptz
+  finishedAt         DateTime?     @map("finished_at") @db.Timestamptz
+  run                Run           @relation(fields: [runId], references: [id], onDelete: Cascade)
+  attempts           StepAttempt[]
+
+  @@unique([runId, index])
+  @@map("plan_steps")
+}
+
+model StepAttempt {
+  id                String        @id @default(uuid()) @db.Uuid
+  stepId            String        @map("step_id") @db.Uuid
+  attempt           Int
+  developerReport   Json?         @map("developer_report")
+  qaReport          Json?         @map("qa_report")
+  reviewReport      Json?         @map("review_report")
+  decision          Json?
+  guarded           Json?
+  effectiveDecision DecisionKind? @map("effective_decision")
+  overridden        Boolean       @default(false)
+  changedFiles      Json?         @map("changed_files")
+  tokensTotal       Int           @default(0) @map("tokens_total")
+  costUsd           Decimal       @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  durationMs        Int           @default(0) @map("duration_ms")
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  step              PlanStep      @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  agentCalls        AgentCall[]
+
+  @@unique([stepId, attempt])
+  @@map("step_attempts")
+}
+
+model AgentCall {
+  id                String       @id @default(uuid()) @db.Uuid
+  runId             String       @map("run_id") @db.Uuid
+  attemptId         String?      @map("attempt_id") @db.Uuid
+  role              AgentRole
+  task              String?
+  model             String
+  inputTokens       Int          @default(0) @map("input_tokens")
+  cachedInputTokens Int          @default(0) @map("cached_input_tokens")
+  outputTokens      Int          @default(0) @map("output_tokens")
+  totalTokens       Int          @default(0) @map("total_tokens")
+  costUsd           Decimal      @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  toolCalls         Int          @default(0) @map("tool_calls")
+  durationMs        Int          @default(0) @map("duration_ms")
+  status            String
+  failureKind       String?      @map("failure_kind")
+  instructionsHash  String?      @map("instructions_hash")
+  startedAt         DateTime     @default(now()) @map("started_at") @db.Timestamptz
+  finishedAt        DateTime?    @map("finished_at") @db.Timestamptz
+  run               Run          @relation(fields: [runId], references: [id], onDelete: Cascade)
+  attempt           StepAttempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([runId, startedAt])
+  @@index([role, model])
+  @@map("agent_calls")
+}
+
+model ModelPrice {
+  model           String   @id
+  inputPerM       Decimal  @map("input_per_m") @db.Decimal(12, 6)
+  cachedInputPerM Decimal  @map("cached_input_per_m") @db.Decimal(12, 6)
+  outputPerM      Decimal  @map("output_per_m") @db.Decimal(12, 6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("model_prices")
+}
