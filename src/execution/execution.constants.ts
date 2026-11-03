@@ -66,6 +66,11 @@ export const PROJECT_DOCUMENT_NAMES: readonly string[] = [
   'package.json',
 ];
 
+// The most one agent call may spend, whatever the run budget still allows. The budget is only
+// checked between calls, so without this a single call can overshoot the whole run: the cap is
+// what the invoker aborts the call on, and RunBudget.callCap() narrows it to what is left.
+export const MAX_TOKENS_PER_AGENT_CALL = 500_000;
+
 // Tokens that must stay available: a required agent call needs the first, the optional
 // Orchestrator calls (Brief, Summarize) are skipped below the second.
 export const REQUIRED_CALL_TOKEN_RESERVE = 20_000;

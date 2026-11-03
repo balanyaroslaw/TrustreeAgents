@@ -16,9 +16,9 @@ const FIRST_TRY = 0;
 const NO_TOOL_CALLS = 0;
 
 // One instance per run: it is the only place agent calls happen. Every call is checked against
-// the abort signal and the budget first, charged afterwards, and retried once when the model
-// breaks its output schema. The invoker is asked for per call, scoped to the attempt the call
-// belongs to, so the row the invoker writes carries that attempt.
+// the abort signal and the budget first, given the cap it may spend, charged afterwards, and
+// retried once when the model breaks its output schema. The invoker is asked for per call,
+// scoped to the attempt the call belongs to, so the row the invoker writes carries that attempt.
 export class AgentCallRunner {
   constructor(
     private readonly invokers: AgentInvokerFactory,
@@ -75,6 +75,9 @@ export class AgentCallRunner {
       attempt: scope.attempt,
     };
     this.assertRunnable(role, task);
+    // What this one call may spend: the per-call cap, or the rest of the run budget when that is
+    // less. The invoker aborts the call on it instead of letting it overshoot the run.
+    const tokenCap = this.budget.callCap();
     this.events.emit({
       kind: AgentEventKind.AgentStarted,
       runId: this.runId,
@@ -92,8 +95,8 @@ export class AgentCallRunner {
     try {
       const invocation =
         task === null
-          ? await invoker.invokeAgent<TOutput>(role, inputText, this.signal)
-          : await invoker.invokeOrchestrator<TOutput>(task, inputText, this.signal);
+          ? await invoker.invokeAgent<TOutput>(role, inputText, this.signal, tokenCap)
+          : await invoker.invokeOrchestrator<TOutput>(task, inputText, this.signal, tokenCap);
       this.account(
         origin,
         invocation.usage,
@@ -105,6 +108,16 @@ export class AgentCallRunner {
       return invocation;
     } catch (error) {
       if (error instanceof AgentInvocationError) {
+        if (error.kind === AgentFailureKind.BudgetExceeded) {
+          this.events.emit({
+            kind: AgentEventKind.CallCapExceeded,
+            runId: this.runId,
+            at: Date.now(),
+            origin,
+            spent: error.partial.usage.total,
+            cap: tokenCap,
+          });
+        }
         this.account(
           origin,
           error.partial.usage,

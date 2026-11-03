@@ -7,6 +7,7 @@ import {
   ACCEPTED_LABEL,
   ATTEMPT_LABEL,
   BUDGET_LABEL,
+  CAP_LABEL,
   DECISION_LABEL,
   EVENT_PREFIX,
   FAILED_LABEL,
@@ -137,6 +138,13 @@ export class EventPrinter implements AgentEventListener {
         `${TOKENS_LABEL} ${CompactNumberFormatter.format(event.input)} in ` +
         `(${CompactNumberFormatter.format(event.cachedInput)} cached) / ` +
         `${CompactNumberFormatter.format(event.output)} out`
+      );
+    }
+    if (event.kind === AgentEventKind.CallCapExceeded) {
+      return (
+        `${EventPrinter.who(event.origin.role, event.origin.task)} ${CAP_LABEL} ` +
+        `${CompactNumberFormatter.format(event.spent)} spent of ` +
+        `${CompactNumberFormatter.format(event.cap)} allowed for one call`
       );
     }
     if (event.kind === AgentEventKind.AgentFinished) {

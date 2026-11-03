@@ -1,4 +1,4 @@
-export const DEVELOPER_MAX_TURNS = 30;
+export const DEVELOPER_MAX_TURNS = 25;
 
 export const MIN_SUMMARY_CHARACTERS = 40;
 export const MIN_CHANGE_DESCRIPTION_CHARACTERS = 10;

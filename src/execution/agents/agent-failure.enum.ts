@@ -4,4 +4,5 @@ export enum AgentFailureKind {
   ApiError = 'api_error',
   Cancelled = 'cancelled',
   ToolFailure = 'tool_failure',
+  BudgetExceeded = 'budget_exceeded',
 }

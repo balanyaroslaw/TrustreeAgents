@@ -4,6 +4,7 @@ export const FINISHED_LABEL = 'finished';
 export const FAILED_LABEL = 'failed:';
 export const TOOL_LABEL = 'tool';
 export const TOKENS_LABEL = 'tokens';
+export const CAP_LABEL = 'stopped on its token cap:';
 
 export const PLAN_LABEL = 'plan';
 export const QUESTIONS_LABEL = 'questions:';

@@ -12,6 +12,13 @@ export class SdkErrorMessages {
     return `${OPENAI_API_KEY_VARIABLE} is missing or empty: ${original}`;
   }
 
+  static callCapExceeded(spent: number, cap: number): string {
+    return (
+      `the call was stopped after ${spent} tokens: one agent call may spend at most ${cap} ` +
+      'tokens, so it was aborted instead of spending the budget of the whole run'
+    );
+  }
+
   static rateLimited(original: string): string {
     return `rate limit reached, try again later: ${original}`;
   }

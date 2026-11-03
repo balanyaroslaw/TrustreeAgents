@@ -117,6 +117,15 @@ export interface TokensUsedEvent extends RunEventBase {
   readonly total: number;
 }
 
+// One call was stopped because it spent more than a single call may spend. Both numbers are
+// read from what the call actually used, so the terminal can name the agent and the spend.
+export interface CallCapExceededEvent extends RunEventBase {
+  readonly kind: AgentEventKind.CallCapExceeded;
+  readonly origin: AgentCallOrigin;
+  readonly spent: number;
+  readonly cap: number;
+}
+
 export interface AgentFinishedEvent extends RunEventBase {
   readonly kind: AgentEventKind.AgentFinished;
   readonly origin: AgentCallOrigin;
@@ -140,6 +149,7 @@ export type AgentEvent =
   | AgentStartedEvent
   | ToolCalledEvent
   | TokensUsedEvent
+  | CallCapExceededEvent
   | AgentFinishedEvent;
 
 export interface AgentEventListener {

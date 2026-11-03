@@ -13,5 +13,6 @@ export enum AgentEventKind {
   AgentStarted = 'agent_started',
   ToolCalled = 'tool_called',
   TokensUsed = 'tokens_used',
+  CallCapExceeded = 'call_cap_exceeded',
   AgentFinished = 'agent_finished',
 }

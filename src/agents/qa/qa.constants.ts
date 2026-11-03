@@ -1,7 +1,11 @@
 import { IssueSeverity } from '../common/issue-severity.enum';
 
-export const QA_MAX_TURNS = 40;
-export const QA_MAX_TEST_FIX_ATTEMPTS = 2;
+export const QA_MAX_TURNS = 22;
+// The hard limits of one QA step, told to QA and counted by it. They exist because a failure it
+// cannot classify used to turn into an edit-and-rerun loop that spent the whole run budget: at
+// the limit QA stops and reports what is left as defects.
+export const QA_MAX_FULL_SUITE_RUNS = 4;
+export const QA_MAX_TEST_FIX_ATTEMPTS = 3;
 export const QA_FLAKY_RERUNS = 3;
 export const QA_MAX_LISTED_FILES = 30;
 

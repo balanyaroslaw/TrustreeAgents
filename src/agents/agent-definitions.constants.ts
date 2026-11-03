@@ -1,7 +1,12 @@
 import { FileToolName } from '../workspace/enums/file-tool-name.enum';
 import { AgentRole } from './agent-role.enum';
 import { DEVELOPER_MAX_TURNS } from './developer/developer.constants';
-import { QA_FLAKY_RERUNS, QA_MAX_TEST_FIX_ATTEMPTS, QA_MAX_TURNS } from './qa/qa.constants';
+import {
+  QA_FLAKY_RERUNS,
+  QA_MAX_FULL_SUITE_RUNS,
+  QA_MAX_TEST_FIX_ATTEMPTS,
+  QA_MAX_TURNS,
+} from './qa/qa.constants';
 import { REVIEWER_MAX_TURNS } from './reviewer/reviewer.constants';
 import type { AgentDefinition, DefinedAgentRole } from './agent-definition.types';
 
@@ -91,10 +96,8 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
         'separate test database, cleaned between tests.',
       'Run the new tests, then the full suite with the project test script, then the build or ' +
         'type check if any. Your last command must be a full-suite run.',
-      'On a failure decide: test wrong - fix it ' +
-        `(max ${QA_MAX_TEST_FIX_ATTEMPTS} attempts); product wrong - keep the failing ` +
-        'test, change no production code, record a defect (expected, actual, suspected ' +
-        'location).',
+      'Classify every failure before changing anything, then fix only what the rules allow and ' +
+        'finish. You have a hard limit on how many times you may run the suite.',
       'Rerun concurrency tests, and any test that failed once and later passed, ' +
         `${QA_FLAKY_RERUNS} times; report flaky tests.`,
       'Finish with the structured final answer.',
@@ -105,9 +108,21 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
       'Developer notes are claims: compare them with the diff, note differences in the ' +
         'summary, and record a defect if they contradict a criterion.',
       'A problem in code not changed in this step goes to outOfScope: do not test or fix it.',
-      'Write tests from the criteria, not from what the code currently does.',
-      'Never change production code, delete or disable tests (skip, only, commenting out) or ' +
-        'loosen assertions.',
+      'The acceptance criteria are the source of truth: not the current behaviour of the code, ' +
+        'and not your test. A test asserts exactly what its criterion states, no stricter and ' +
+        'no looser. A criterion stating an exact value is asserted with exact equality; a ' +
+        'criterion stating an approximate value is asserted with a stated tolerance.',
+      'Classify each failure: (a) mechanical - the test does not compile, an import or path is ' +
+        'wrong, or setup is missing: fix it; (b) the assertion is stricter than its criterion: ' +
+        'correct the assertion once so it matches the criterion; (c) the assertion matches its ' +
+        'criterion and still fails: this is a product defect. Do not edit the test, do not ' +
+        'touch production code, record the defect and move on.',
+      'If you cannot classify a failure with certainty, record it as a product defect and say ' +
+        'in the defect that you were unsure. Never keep editing to find out.',
+      `Hard limits for the whole step: at most ${QA_MAX_FULL_SUITE_RUNS} runs of the full test ` +
+        `suite and at most ${QA_MAX_TEST_FIX_ATTEMPTS} test edits after the first suite run. ` +
+        'When you reach either limit, stop immediately and finish with what you have, listing ' +
+        'every unresolved failure as a defect.',
       'Prove concurrency and idempotency against the real database with concurrent calls ' +
         '(Promise.all); mocks cannot prove atomicity.',
       'Tests must be deterministic: no sleeps, no dependence on test order or real time, no ' +

@@ -2,8 +2,19 @@ import type { DeferredIssue } from '../../agents/orchestrator/decide/step-decisi
 import type { RunSummary } from '../../agents/orchestrator/summarize/run-summary.types';
 import type { QaStatus } from '../../agents/qa/qa-status.enum';
 import type { ReviewVerdict } from '../../agents/reviewer/review-verdict.enum';
+import type { AgentFailureKind } from '../agents/agent-failure.enum';
 import type { RunStatus } from '../run-status.enum';
 import type { StepStatus } from '../step-status.enum';
+
+// A call the code ended instead of the agent: it ran out of turns, or it was stopped on the
+// tokens one call may spend. Read from the agent call ledger, so it says what happened to the
+// call and not what the agent claims about it.
+export interface RunReportCutOffCall {
+  readonly agent: string;
+  readonly attempt: number | null;
+  readonly reason: AgentFailureKind;
+  readonly tokens: number;
+}
 
 export interface RunReportStep {
   readonly index: number;
@@ -17,6 +28,7 @@ export interface RunReportStep {
   readonly qaStatus: QaStatus | null;
   readonly reviewVerdict: ReviewVerdict | null;
   readonly overrideReasons: readonly string[];
+  readonly cutOffCalls: readonly RunReportCutOffCall[];
   readonly tokens: number;
 }
 

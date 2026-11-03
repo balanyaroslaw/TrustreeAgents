@@ -53,6 +53,13 @@ export class ExecutionMessages {
     return `${role} ran out of turns before it finished, so its work is incomplete`;
   }
 
+  static agentHitTokenCap(role: AgentRole, spent: number): string {
+    return (
+      `${role} was stopped after spending ${spent} tokens on one call, which is more than a ` +
+      'single call may spend, so its work is incomplete'
+    );
+  }
+
   static agentInvalidOutput(role: AgentRole): string {
     return `${role} did not return a valid structured answer, not even on the retry`;
   }

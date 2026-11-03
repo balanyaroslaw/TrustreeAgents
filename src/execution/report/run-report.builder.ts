@@ -3,12 +3,14 @@ import type { QaStatus } from '../../agents/qa/qa-status.enum';
 import type { ReviewVerdict } from '../../agents/reviewer/review-verdict.enum';
 import type { AgentCallLedger } from '../agents/agent-call.ledger';
 import type { RunBudget } from '../budget/run-budget';
-import type { AttemptOutcome, RunRequest, StepOutcome } from '../execution.types';
+import type { AgentCallRecord, AttemptOutcome, RunRequest, StepOutcome } from '../execution.types';
 import { RunIdFormatter } from '../run-id.formatter';
 import type { RunState } from '../run-state';
+import { CUT_OFF_FAILURES } from './run-report.constants';
 import type {
   RunReport,
   RunReportAgentMetrics,
+  RunReportCutOffCall,
   RunReportMetrics,
   RunReportStep,
   RunReportStepMetrics,
@@ -67,8 +69,35 @@ export class RunReportBuilder {
       overrideReasons: [
         ...new Set(step.attempts.flatMap((attempt) => attempt.guarded?.overrideReasons ?? [])),
       ],
+      cutOffCalls: RunReportBuilder.cutOffCalls(step.index, ledger),
       tokens: RunReportBuilder.tokensOfStep(step.index, ledger),
     };
+  }
+
+  // Which calls of this step the code ended rather than the agent: the ledger records the
+  // failure kind of every call, so a run report never hides that a report was cut short.
+  private static cutOffCalls(
+    index: number,
+    ledger: AgentCallLedger,
+  ): readonly RunReportCutOffCall[] {
+    return ledger.ofStep(index).flatMap((call) => {
+      const { failure } = call;
+      if (failure === null || !CUT_OFF_FAILURES.includes(failure)) {
+        return [];
+      }
+      return [
+        {
+          agent: RunReportBuilder.agentOf(call),
+          attempt: call.attempt,
+          reason: failure,
+          tokens: call.tokens.total,
+        },
+      ];
+    });
+  }
+
+  private static agentOf(call: AgentCallRecord): string {
+    return call.task === null ? call.role : `${call.role} (${call.task})`;
   }
 
   private static metrics(

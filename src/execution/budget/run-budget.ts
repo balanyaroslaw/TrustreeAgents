@@ -1,4 +1,5 @@
 import type { AgentUsage } from '../agents/agent-invocation.types';
+import { MAX_TOKENS_PER_AGENT_CALL } from '../execution.constants';
 import { ExecutionMessages } from '../execution.messages';
 import { BudgetExhaustedError } from './budget-exhausted.error';
 
@@ -21,6 +22,13 @@ export class RunBudget {
         ExecutionMessages.budgetExhausted(this.spentTokens, this.limit),
       );
     }
+  }
+
+  // The most the next call may spend: the per-call cap, or what is left of the run when that is
+  // less. The caller passes it into the call, so the call stops itself instead of overshooting a
+  // budget that is only checked between calls.
+  callCap(): number {
+    return Math.min(MAX_TOKENS_PER_AGENT_CALL, this.remaining());
   }
 
   assertRoom(reserve: number): void {

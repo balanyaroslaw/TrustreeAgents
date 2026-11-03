@@ -42,6 +42,9 @@ export const ORCHESTRATOR_TASKS: Readonly<Record<OrchestratorTask, OrchestratorT
       'Acceptance criteria are what must be true after the step, each independently checkable: ' +
         '"POST /payments returns 201 with status pending and the amount in minor units", not ' +
         '"implement the service cleanly".',
+      'Write each criterion as observable behaviour of the product ("sin 180 in degree mode ' +
+        'evaluates to exactly 0"), never as a statement about tests ("tests verify that..."). ' +
+        "Whether that behaviour is covered by tests is QA's concern, not a criterion.",
       'For payment work make the risky behaviour explicit in the criteria of the step that ' +
         'introduces it: idempotency, refund totals never above the captured amount, ' +
         'concurrent identical webhooks processed once, only allowed status transitions, ' +

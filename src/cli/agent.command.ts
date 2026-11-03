@@ -7,6 +7,7 @@ import { ProjectRepository } from '../db/repositories/project.repository';
 import { RunRepository } from '../db/repositories/run.repository';
 import { EventBus } from '../events/event-bus';
 import { AgentInvocationError } from '../execution/agents/agent-invocation.error';
+import { MAX_TOKENS_PER_AGENT_CALL } from '../execution/execution.constants';
 import { RunStatus } from '../execution/run-status.enum';
 import { SdkInvokerFactory } from '../sdk/sdk-invoker.factory';
 import type { CallTarget } from '../sdk/call-scope.types';
@@ -117,13 +118,20 @@ export class AgentCommand extends DatabaseCommand {
     const controller = new AbortController();
 
     try {
+      // One call, no run budget to protect, so the cap is the per-call limit itself.
       const invocation =
         target.task === null
-          ? await invoker.invokeAgent<unknown>(target.role, input.inputText, controller.signal)
+          ? await invoker.invokeAgent<unknown>(
+              target.role,
+              input.inputText,
+              controller.signal,
+              MAX_TOKENS_PER_AGENT_CALL,
+            )
           : await invoker.invokeOrchestrator<unknown>(
               target.task,
               input.inputText,
               controller.signal,
+              MAX_TOKENS_PER_AGENT_CALL,
             );
       await this.finish(run.id, RunStatus.Completed, null);
       await this.printer.print(target, invocation, input, await this.inputs.changedFiles());

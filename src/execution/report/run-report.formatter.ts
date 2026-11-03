@@ -11,6 +11,9 @@ import {
   ATTEMPTS_LABEL,
   BRANCH_LABEL,
   COMMIT_LABEL,
+  CUT_OFF_ATTEMPT_LABEL,
+  CUT_OFF_LABEL,
+  CUT_OFF_TOKENS_LABEL,
   DEFERRED_HEADER,
   DURATION_LABEL,
   FOLLOW_UPS_HEADER,
@@ -35,7 +38,7 @@ import {
   SUMMARY_LABEL,
   TOKENS_LABEL,
 } from './run-report.constants';
-import type { RunReport, RunReportStep } from './run-report.types';
+import type { RunReport, RunReportCutOffCall, RunReportStep } from './run-report.types';
 
 const SECTION_SEPARATOR = '\n\n';
 const LINE_SEPARATOR = '\n';
@@ -129,6 +132,12 @@ export class RunReportFormatter {
     if (step.overrideReasons.length > EMPTY) {
       lines.push(`${BULLET}${OVERRIDES_LABEL}: ${step.overrideReasons.join(ENTRY_SEPARATOR)}`);
     }
+    if (step.cutOffCalls.length > EMPTY) {
+      lines.push(
+        `${BULLET}${CUT_OFF_LABEL}: ` +
+          `${step.cutOffCalls.map(RunReportFormatter.cutOff).join(ENTRY_SEPARATOR)}`,
+      );
+    }
     if (step.failureReason !== null) {
       lines.push(`${BULLET}${REASON_LABEL}: ${step.failureReason}`);
     }
@@ -137,6 +146,16 @@ export class RunReportFormatter {
     }
 
     return lines.join(LINE_SEPARATOR);
+  }
+
+  // Said plainly, because a report that was cut off is not the same as one the agent finished.
+  private static cutOff(call: RunReportCutOffCall): string {
+    const attempt = call.attempt === null ? '' : ` in ${CUT_OFF_ATTEMPT_LABEL} ${call.attempt}`;
+
+    return (
+      `${call.agent} stopped on ${call.reason}${attempt} after ${call.tokens} ` +
+      `${CUT_OFF_TOKENS_LABEL}`
+    );
   }
 
   private static deferred(issues: readonly DeferredIssue[]): string | null {

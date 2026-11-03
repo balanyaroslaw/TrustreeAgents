@@ -1,3 +1,5 @@
+import { AgentFailureKind } from '../agents/agent-failure.enum';
+
 export const REPORT_TITLE_PREFIX = '# Run';
 export const REQUEST_HEADER = '## Request';
 export const PLAN_HEADER = '## Plan';
@@ -27,6 +29,17 @@ export const OVERRIDES_LABEL = 'Guard overrides';
 export const REASON_LABEL = 'Reason';
 export const NOTE_LABEL = 'Note';
 export const TOKENS_LABEL = 'Tokens';
+export const CUT_OFF_LABEL = 'Ended early';
+export const CUT_OFF_ATTEMPT_LABEL = 'attempt';
+export const CUT_OFF_TOKENS_LABEL = 'tokens';
+
+// A call that ended on one of these did not end on an answer of its own: the code stopped it,
+// so the report says so instead of leaving a short report looking like a complete one.
+export const CUT_OFF_FAILURES: readonly AgentFailureKind[] = [
+  AgentFailureKind.MaxTurns,
+  AgentFailureKind.BudgetExceeded,
+];
+
 export const NO_COMMIT = 'none';
 export const NO_BRANCH = 'none';
 export const NOT_RUN = 'not run';
