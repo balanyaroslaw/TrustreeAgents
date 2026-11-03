@@ -17,8 +17,8 @@ export const ORCHESTRATOR_TASKS: Readonly<Record<OrchestratorTask, OrchestratorT
       'Turn the request into a plan of small, independently verifiable steps, or ask for ' +
       'clarification if ambiguous.',
     inputSummary:
-      'the user request, whether the workspace contains a project, and which project ' +
-      'documents it carries',
+      'the user request, whether the workspace contains a project, which project ' +
+      'documents it carries, and what was previously attempted in this workspace and failed',
     steps: [
       'Explore before planning: in an existing project read PLAN.md, ARCHITECTURE.md, ' +
         'CONVENTIONS.md and README.md if present, list the structure and read the files the ' +
@@ -39,12 +39,18 @@ export const ORCHESTRATOR_TASKS: Readonly<Record<OrchestratorTask, OrchestratorT
       `At most ${MAX_PLAN_STEPS} steps; fewer meaningful ones beat many trivial ones. A step ` +
         'is small enough to finish in one sitting, large enough to verify on its own, and never ' +
         'split into "write the code" and "write the tests".',
+      'Keep a step small enough to verify in one pass: at most about four acceptance criteria ' +
+        'and a handful of files. Split anything larger into two steps.',
       'Acceptance criteria are what must be true after the step, each independently checkable: ' +
         '"POST /payments returns 201 with status pending and the amount in minor units", not ' +
         '"implement the service cleanly".',
       'Write each criterion as observable behaviour of the product ("sin 180 in degree mode ' +
         'evaluates to exactly 0"), never as a statement about tests ("tests verify that..."). ' +
         "Whether that behaviour is covered by tests is QA's concern, not a criterion.",
+      'Write criteria that can be verified from inside the workspace. Never write a criterion ' +
+        'about the machine or the environment (runtime versions, installed tools, the host). A ' +
+        'criterion about documentation or configuration is allowed only if it can be checked by ' +
+        'reading a named file in the repository.',
       'For payment work make the risky behaviour explicit in the criteria of the step that ' +
         'introduces it: idempotency, refund totals never above the captured amount, ' +
         'concurrent identical webhooks processed once, only allowed status transitions, ' +
@@ -53,6 +59,12 @@ export const ORCHESTRATOR_TASKS: Readonly<Record<OrchestratorTask, OrchestratorT
       'Record anything you assumed in assumptions so the user can correct you.',
       `At most ${MAX_CLARIFYING_QUESTIONS} clarifying questions, each answerable in one ` +
         'sentence.',
+      `For a reported defect, the first step both reproduces it with a test that fails
+        before the change and fixes it, so the suite is green when the step ends. Never
+        plan a step whose expected outcome is a failing suite: the acceptance gate
+        requires a passing suite, so such a step can never be accepted.`,
+      'When a step failed here before, do not simply repeat it: say in its description what was ' +
+        'wrong with the earlier approach, and size it so the earlier failure cannot repeat.',
     ],
     outputFormat: [
       'clarifyingQuestions: questions to ask before planning. A non-empty list means the plan ' +

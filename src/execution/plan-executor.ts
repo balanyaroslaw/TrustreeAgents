@@ -36,6 +36,7 @@ import {
   FIRST_ATTEMPT,
   FIRST_STEP_INDEX,
   MAX_PLAN_ATTEMPTS,
+  MAX_PREVIOUS_FAILURES,
   OPTIONAL_CALL_TOKEN_RESERVE,
   PLAN_FILE_NAME,
   PLAN_REPOSITORY,
@@ -156,6 +157,11 @@ export class PlanExecutor {
     caller: AgentCallRunner,
   ): Promise<RunPlan | null> {
     let answered: readonly AnsweredQuestion[] = [];
+    // What was attempted in this workspace before and abandoned, read once: the history of the
+    // project cannot change while this run plans, and a project with no finished run has none.
+    // The previous plan itself is deliberately not carried forward - the code is the source of
+    // truth, and a plan that failed was often badly sized, which is why it failed.
+    const previousFailures = await this.plans.failedSteps(request.projectId, MAX_PREVIOUS_FAILURES);
 
     for (let attempt = FIRST_ATTEMPT; attempt <= MAX_PLAN_ATTEMPTS; attempt += 1) {
       this.events.emit({
@@ -172,6 +178,7 @@ export class PlanExecutor {
           userPrompt: request.prompt,
           isExistingProject: survey.isExistingProject,
           workspaceDocuments: survey.documents,
+          previousFailures,
           previousQuestionsAndAnswers: answered,
         }),
         NO_SCOPE,
@@ -358,6 +365,9 @@ export class PlanExecutor {
       index: step.index,
       status: StepStatus.Failed,
       attempts: result.attempts.length,
+      // Stored on the step, not only in the report: a later run on this workspace is shown why
+      // this step was given up, and that reason is read back from this column.
+      failureReason: reason,
       finishedAt: new Date(),
     });
     state.addStep({
@@ -506,6 +516,7 @@ export class PlanExecutor {
       runId: request.runId,
       index: step.index,
       status: StepStatus.Failed,
+      failureReason: state.stoppedReason,
       finishedAt: new Date(),
     });
     state.addStep({

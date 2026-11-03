@@ -9,6 +9,9 @@ export const REVIEW_CHANGED_CODE_LABELS: ChangedCodeLabels = {
 
 export const QA_FACTS_HEADER = 'QA results (facts recorded by the system):';
 export const QA_DEFECTS_HEADER = 'Defects reported by QA:';
+export const QA_UNCOVERABLE_HEADER =
+  'Criteria QA could not cover with an automated test, and the reason it gave (check these ' +
+  'against the code yourself; they are not automatically unmet):';
 export const PREVIOUS_ISSUES_HEADER =
   'Issues you raised in the previous attempt (check whether they are fixed):';
 export const CHECKLIST_HEADER =

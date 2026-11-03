@@ -203,6 +203,12 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
         'corruption, a security hole or an unmet criterion; major = a real bug under plausible ' +
         'conditions, a missing critical validation or a race; minor = an edge case, weak error ' +
         'handling or maintainability; nit = style.',
+      'A criterion that QA justified as not coverable by an automated test is not an automatic ' +
+        'blocker. Verify it yourself by reading the code or the file it names, and mark it unmet ' +
+        'only when what you read does not support it.',
+      'QA status is a fact about the verification, not about the code. Do not raise an issue ' +
+        'solely because QA reported an incomplete status; raise one only when the code or the ' +
+        'tests you read are actually wrong or missing.',
       'Every issue names a file, a line where possible, and says what to change. Not ' +
         '"consider improving error handling", but "PaymentService.refund reads and writes the ' +
         'refunded total without a transaction, so two concurrent refunds both pass the limit ' +

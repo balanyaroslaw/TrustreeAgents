@@ -1,11 +1,22 @@
 import { DurationFormatter } from '../utils/duration.formatter';
-import type { QaFullRun } from './qa-report.types';
+import type { QaFullRun, QaUncoverableCriterion } from './qa-report.types';
 
 const SINGLE = 1;
+const NO_COMMANDS = 0;
 
 export class QaReportMessages {
   static noFullRun(): string {
     return 'the full test suite was never run';
+  }
+
+  // Names both sides, so the next attempt can fix the name instead of guessing why it is stuck.
+  static namedCommandNeverRun(named: string, recorded: readonly string[]): string {
+    const ran =
+      recorded.length === NO_COMMANDS
+        ? 'no command was run at all'
+        : `commands actually run: ${recorded.join('; ')}`;
+
+    return `QA named "${named}" as its full test suite, but that command was never run (${ran})`;
   }
 
   static fullRunFailed(run: QaFullRun): string {
@@ -30,8 +41,20 @@ export class QaReportMessages {
     return `not covered by any test: ${criteria.join('; ')}`;
   }
 
-  static coveredCriteria(count: number): string {
-    return `all ${count} acceptance ${QaReportMessages.plural(count, 'criterion', 'criteria')} are at least partially covered`;
+  static coveredCriteria(covered: number, total: number): string {
+    const criteria = QaReportMessages.plural(total, 'criterion', 'criteria');
+
+    return covered === total
+      ? `all ${total} acceptance ${criteria} are at least partially covered`
+      : `${covered} of ${total} acceptance ${criteria} are at least partially covered`;
+  }
+
+  // Stated whatever the status is, so the reason a criterion cannot be automated is in front of
+  // whoever decides instead of being the thing that silently blocks the step.
+  static uncoverableCriteria(entries: readonly QaUncoverableCriterion[]): string {
+    const listed = entries.map((entry) => `${entry.criterion} (${entry.reason})`).join('; ');
+
+    return `not coverable by an automated test, with a reason given by QA: ${listed}`;
   }
 
   static unjustifiedFiles(paths: readonly string[]): string {

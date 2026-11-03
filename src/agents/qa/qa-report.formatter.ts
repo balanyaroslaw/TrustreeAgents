@@ -2,7 +2,13 @@ import type { TestSummaryCounts } from '../../workspace/commands/test-summary.ty
 import { CompactNumberFormatter } from '../utils/compact-number.formatter';
 import { DurationFormatter } from '../utils/duration.formatter';
 import { CoverageLevel } from './coverage-level.enum';
-import type { QaFullRun, QaMetrics, QaReport, QaScope } from './qa-report.types';
+import type {
+  QaFullRun,
+  QaMetrics,
+  QaReport,
+  QaScope,
+  QaUncoverableCriterion,
+} from './qa-report.types';
 import type {
   QaCoverageEntry,
   QaDefect,
@@ -37,6 +43,9 @@ export class QaReportFormatter {
     }
     lines.push(`Summary: ${result.summary}`);
     lines.push(...QaReportFormatter.coverage(result.coverage));
+    if (report.uncoverableCriteria.length > 0) {
+      lines.push(`Not automatable: ${QaReportFormatter.uncoverable(report.uncoverableCriteria)}`);
+    }
     if (result.fileCoverage.length > 0) {
       lines.push(`File coverage: ${QaReportFormatter.fileCoverage(result.fileCoverage)}`);
     }
@@ -136,6 +145,10 @@ export class QaReportFormatter {
     );
 
     return [`Defects (${defects.length}):`, ...entries];
+  }
+
+  private static uncoverable(entries: readonly QaUncoverableCriterion[]): string {
+    return entries.map((entry) => `${entry.criterion} - ${entry.reason}`).join(ENTRY_SEPARATOR);
   }
 
   private static notTested(notTested: readonly QaNotTestedEntry[]): string {

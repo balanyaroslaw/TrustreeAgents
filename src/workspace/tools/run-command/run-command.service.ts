@@ -61,8 +61,10 @@ export class RunCommandService {
       outputTail: output,
     });
 
+    // A timeout is an outcome of the command, not a failure of the tool: it is returned as the
+    // "Error: ..." text the model reads, with whatever the command printed before it was killed.
     if (outcome.timedOut) {
-      throw new Error(WorkspaceMessages.commandTimedOut(request.timeoutMs, output));
+      return WorkspaceMessages.error(WorkspaceMessages.commandTimedOut(request.timeoutMs, output));
     }
 
     return WorkspaceMessages.commandResult(
@@ -87,17 +89,20 @@ export class RunCommandService {
 
       const collector = new OutputCollector(MAX_COLLECTED_OUTPUT_BYTES);
       let timedOut = false;
+      // The pending SIGKILL, held so it can be cancelled the moment the group is gone: the pid of
+      // a reaped group can be reused, and this signal must never reach anything else.
+      let escalation: NodeJS.Timeout | null = null;
 
       child.stdout.on('data', (chunk: Buffer) => collector.add(chunk));
       child.stderr.on('data', (chunk: Buffer) => collector.add(chunk));
 
       const timer = setTimeout(() => {
         timedOut = true;
-        RunCommandService.terminate(child);
+        escalation = RunCommandService.terminate(child);
       }, request.timeoutMs);
 
       child.on('error', (error: unknown) => {
-        clearTimeout(timer);
+        RunCommandService.clearTimers(timer, escalation);
         reject(
           new Error(
             WorkspaceMessages.couldNotStartCommand(
@@ -109,7 +114,7 @@ export class RunCommandService {
       });
 
       child.on('close', (exitCode, signal) => {
-        clearTimeout(timer);
+        RunCommandService.clearTimers(timer, escalation);
         resolve({
           exitCode,
           signal,
@@ -130,9 +135,23 @@ export class RunCommandService {
     return [output, WorkspaceMessages.outputCut(MAX_COLLECTED_OUTPUT_BYTES)].join(LINE_BREAK);
   }
 
-  private static terminate(child: ChildProcess): void {
+  // SIGTERM to the whole process group first, so a shell and everything it started get it, then
+  // SIGKILL to the same group for whatever ignored SIGTERM. The returned timer is cancelled by the
+  // caller as soon as the group has gone, and unref'd so it can never hold the process open.
+  private static terminate(child: ChildProcess): NodeJS.Timeout {
     RunCommandService.signal(child, TERMINATE_SIGNAL);
-    setTimeout(() => RunCommandService.signal(child, KILL_SIGNAL), KILL_GRACE_MS).unref();
+
+    return setTimeout(() => RunCommandService.signal(child, KILL_SIGNAL), KILL_GRACE_MS).unref();
+  }
+
+  // Called on every exit path, so neither a pending timeout nor a pending kill can hold this
+  // process open or fire once the command is over.
+  private static clearTimers(...timers: readonly (NodeJS.Timeout | null)[]): void {
+    for (const timer of timers) {
+      if (timer !== null) {
+        clearTimeout(timer);
+      }
+    }
   }
 
   private static signal(child: ChildProcess, signal: NodeJS.Signals): void {

@@ -6,6 +6,10 @@ export const NPM_TEST_SUBCOMMAND = 'test';
 export const NPM_RUN_SUBCOMMAND = 'run';
 export const NPM_TEST_SCRIPT_PATTERN = /^test(:.+)?$/;
 export const TEST_RUNNERS: readonly string[] = ['jest'];
+
+export const PACKAGE_MANIFEST_NAME = 'package.json';
+export const PACKAGE_SCRIPTS_KEY = 'scripts';
+export const PACKAGE_TEST_SCRIPT_KEY = 'test';
 export const ARGUMENT_SEPARATOR = '--';
 export const FLAG_PREFIX = '-';
 

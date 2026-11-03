@@ -69,7 +69,7 @@ export const PROJECT_DOCUMENT_NAMES: readonly string[] = [
 // The most one agent call may spend, whatever the run budget still allows. The budget is only
 // checked between calls, so without this a single call can overshoot the whole run: the cap is
 // what the invoker aborts the call on, and RunBudget.callCap() narrows it to what is left.
-export const MAX_TOKENS_PER_AGENT_CALL = 500_000;
+export const MAX_TOKENS_PER_AGENT_CALL = 1_000_000;
 
 // Tokens that must stay available: a required agent call needs the first, the optional
 // Orchestrator calls (Brief, Summarize) are skipped below the second.
@@ -82,5 +82,9 @@ export const IMMEDIATE_EXIT_CODE = 130;
 
 export const AGENT_INVOKER_FACTORY = 'AGENT_INVOKER_FACTORY';
 export const USER_PROMPTER = 'USER_PROMPTER';
+// How many previously failed steps of this project the planner is shown. Enough to see a
+// pattern, few enough that the history never crowds out the request.
+export const MAX_PREVIOUS_FAILURES = 8;
+
 export const PLAN_REPOSITORY = 'PLAN_REPOSITORY';
 export const ATTEMPT_REPOSITORY = 'ATTEMPT_REPOSITORY';

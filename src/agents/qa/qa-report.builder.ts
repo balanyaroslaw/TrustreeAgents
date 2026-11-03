@@ -10,10 +10,20 @@ import { ChangedFileClassifier } from './changed-file.classifier';
 import { ChangedFileKind } from './changed-file-kind.enum';
 import { CoverageLevel } from './coverage-level.enum';
 import { QaReportMessages } from './qa-report.messages';
-import type { QaFullRun, QaMetrics, QaReport, QaScope } from './qa-report.types';
+import type {
+  QaMetrics,
+  QaReport,
+  QaScope,
+  QaUncoverableCriterion,
+  ResolvedFullRun,
+} from './qa-report.types';
 import type { QaResult } from './qa-result.types';
 import { QaStatus } from './qa-status.enum';
-import { SEVERE_DEFECT_SEVERITIES } from './qa.constants';
+import {
+  MIN_CRITERION_REFERENCE_CHARACTERS,
+  SEVERE_DEFECT_SEVERITIES,
+  WHITESPACE_PATTERN,
+} from './qa.constants';
 import { SuspiciousTestChangeDetector } from './suspicious-test-change.detector';
 import { TestScopeChecker } from './test-scope.checker';
 
@@ -30,22 +40,36 @@ export class QaReportBuilder {
     toolCalls: number,
     durationMs: number,
     testFileDiff: string,
+    testScript: string | null,
   ): QaReport {
-    const lastFullRun = QaReportBuilder.lastFullRun(runs, changes);
+    const fullRun = QaReportBuilder.lastFullRun(result, runs, changes, testScript);
     const changedSourcePaths = QaReportBuilder.pathsOfKind(changedFiles, ChangedFileKind.Source);
     // A file the step deleted cannot be covered by a test, so it is not expected in fileCoverage.
     const coverableSourcePaths = QaReportBuilder.pathsOfKind(
       changedFiles.filter((file) => file.status !== ChangedFileStatus.Deleted),
       ChangedFileKind.Source,
     );
-    const reasons = QaReportBuilder.statusReasons(result, lastFullRun, coverableSourcePaths);
+    const uncoverableCriteria = QaReportBuilder.uncoverableCriteria(result);
+    const reasons = QaReportBuilder.statusReasons(
+      result,
+      fullRun,
+      coverableSourcePaths,
+      uncoverableCriteria,
+      runs,
+    );
 
     return {
       result,
       status: QaReportBuilder.status(reasons),
-      statusReasons: [...reasons.failed, ...reasons.incomplete, ...reasons.passed],
+      statusReasons: [
+        ...reasons.failed,
+        ...reasons.incomplete,
+        ...reasons.notes,
+        ...reasons.passed,
+      ],
+      uncoverableCriteria,
       scope: QaReportBuilder.scope(changedFiles),
-      lastFullRun,
+      lastFullRun: fullRun.run,
       metrics: QaReportBuilder.metrics(changes, runs, usage, toolCalls, durationMs),
       warnings: QaReportBuilder.warnings(result, changes, changedSourcePaths, testFileDiff),
     };
@@ -63,11 +87,16 @@ export class QaReportBuilder {
 
   private static statusReasons(
     result: QaResult,
-    lastFullRun: QaFullRun | null,
+    fullRun: ResolvedFullRun,
     changedSourcePaths: readonly string[],
-  ): { failed: string[]; incomplete: string[]; passed: string[] } {
+    uncoverable: readonly QaUncoverableCriterion[],
+    runs: readonly CommandRunRecord[],
+  ): { failed: string[]; incomplete: string[]; notes: string[]; passed: string[] } {
+    const lastFullRun = fullRun.run;
     const failed: string[] = [];
     const incomplete: string[] = [];
+    // Reported whatever the status turns out to be, so nothing that was weighed is left unsaid.
+    const notes: string[] = [];
     const passed: string[] = [];
 
     if (
@@ -84,15 +113,32 @@ export class QaReportBuilder {
     }
 
     if (lastFullRun === null) {
-      incomplete.push(QaReportMessages.noFullRun());
+      // A command QA named but never ran is said plainly, with what it did run, so the next
+      // attempt can correct the name instead of guessing why the step will not pass.
+      incomplete.push(
+        fullRun.namedButNotRun === null
+          ? QaReportMessages.noFullRun()
+          : QaReportMessages.namedCommandNeverRun(
+              fullRun.namedButNotRun,
+              runs.map((run) => run.command),
+            ),
+      );
     } else if (!lastFullRun.fresh) {
       incomplete.push(QaReportMessages.staleFullRun());
     }
+    // Symmetric with the rule for changed source files below: a criterion QA could not cover is a
+    // gap in the verification only when nothing explains it. A criterion that notTested names,
+    // with a reason, is reported as a note instead, because no Developer attempt can make an
+    // untestable criterion testable and the step would otherwise never leave incomplete.
+    const justified = new Set(uncoverable.map((entry) => entry.criterion));
     const uncovered = result.coverage
-      .filter((entry) => entry.level === CoverageLevel.None)
+      .filter((entry) => entry.level === CoverageLevel.None && !justified.has(entry.criterion))
       .map((entry) => entry.criterion);
     if (uncovered.length > NO_ENTRIES) {
       incomplete.push(QaReportMessages.uncoveredCriteria(uncovered));
+    }
+    if (uncoverable.length > NO_ENTRIES) {
+      notes.push(QaReportMessages.uncoverableCriteria(uncoverable));
     }
     const unjustified = QaReportBuilder.unjustifiedFiles(result, changedSourcePaths);
     if (unjustified.length > NO_ENTRIES) {
@@ -104,12 +150,57 @@ export class QaReportBuilder {
 
     if (failed.length === NO_ENTRIES && incomplete.length === NO_ENTRIES) {
       passed.push(QaReportMessages.fullRunPassed());
-      passed.push(QaReportMessages.coveredCriteria(result.coverage.length));
+      passed.push(
+        QaReportMessages.coveredCriteria(
+          result.coverage.length - uncoverable.length,
+          result.coverage.length,
+        ),
+      );
       passed.push(QaReportMessages.justifiedFiles());
       passed.push(QaReportMessages.noDefects());
     }
 
-    return { failed, incomplete, passed };
+    return { failed, incomplete, notes, passed };
+  }
+
+  // The criteria at level none that notTested both names and explains. The match is deliberately
+  // forgiving in either direction, because QA writes the criterion from memory, but a very short
+  // "what" is ignored so one vague entry cannot justify every criterion in the step.
+  private static uncoverableCriteria(result: QaResult): QaUncoverableCriterion[] {
+    const entries: QaUncoverableCriterion[] = [];
+
+    for (const entry of result.coverage) {
+      if (entry.level !== CoverageLevel.None) {
+        continue;
+      }
+      const reason = QaReportBuilder.justificationFor(result, entry.criterion);
+      if (reason !== null) {
+        entries.push({ criterion: entry.criterion, reason });
+      }
+    }
+
+    return entries;
+  }
+
+  private static justificationFor(result: QaResult, criterion: string): string | null {
+    const wanted = QaReportBuilder.comparable(criterion);
+
+    for (const entry of result.notTested) {
+      const reason = entry.reason.trim();
+      const what = QaReportBuilder.comparable(entry.what);
+      if (reason === '' || what.length < MIN_CRITERION_REFERENCE_CHARACTERS) {
+        continue;
+      }
+      if (what.includes(wanted) || wanted.includes(what)) {
+        return reason;
+      }
+    }
+
+    return null;
+  }
+
+  private static comparable(text: string): string {
+    return text.toLowerCase().replace(WHITESPACE_PATTERN, ' ').trim();
   }
 
   private static unjustifiedFiles(
@@ -131,28 +222,51 @@ export class QaReportBuilder {
     return result.notTested.some((entry) => entry.what.includes(path));
   }
 
+  // QA chooses which command counts as its full suite; the code supplies whether it passed. The
+  // named command is looked up among the commands that were actually recorded, so a project that
+  // runs its suites through a script of its own is no longer invisible here. Without a name, the
+  // command text is classified as before.
   private static lastFullRun(
+    result: QaResult,
     runs: readonly CommandRunRecord[],
     changes: readonly TrackedChange[],
-  ): QaFullRun | null {
-    const fullRuns = runs.filter(
-      (run) => TestRunClassifier.classify(run.command) === TestRunKind.FullSuite,
-    );
+    testScript: string | null,
+  ): ResolvedFullRun {
+    const named = QaReportBuilder.namedFullSuiteCommand(result);
+    const fullRuns =
+      named === null
+        ? runs.filter(
+            (run) => TestRunClassifier.classify(run.command, testScript) === TestRunKind.FullSuite,
+          )
+        : runs.filter((run) => QaReportBuilder.comparable(run.command) === named);
+
     if (fullRuns.length === NO_ENTRIES) {
-      return null;
+      return { run: null, namedButNotRun: named };
     }
     const run = fullRuns.reduce((latest, candidate) =>
       candidate.sequence > latest.sequence ? candidate : latest,
     );
 
     return {
-      command: run.command,
-      exitCode: run.exitCode,
-      timedOut: run.timedOut,
-      durationMs: run.durationMs,
-      fresh: !QaReportBuilder.testChangedAfter(changes, run.sequence),
-      summary: TestSummaryParser.parse(run.outputTail),
+      run: {
+        command: run.command,
+        exitCode: run.exitCode,
+        timedOut: run.timedOut,
+        durationMs: run.durationMs,
+        fresh: !QaReportBuilder.testChangedAfter(changes, run.sequence),
+        summary: TestSummaryParser.parse(run.outputTail),
+      },
+      namedButNotRun: null,
     };
+  }
+
+  // Blank counts as absent, which is what keeps the classifier fallback reachable.
+  private static namedFullSuiteCommand(result: QaResult): string | null {
+    const named: unknown = result.fullSuiteCommand;
+
+    return typeof named === 'string' && named.trim() !== ''
+      ? QaReportBuilder.comparable(named)
+      : null;
   }
 
   private static testChangedAfter(changes: readonly TrackedChange[], sequence: number): boolean {

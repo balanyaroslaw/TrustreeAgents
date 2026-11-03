@@ -23,6 +23,7 @@ import { OrchestratorTask } from '../agents/orchestrator/orchestrator-task.enum'
 import { CoverageLevel } from '../agents/qa/coverage-level.enum';
 import { QaReportBuilder } from '../agents/qa/qa-report.builder';
 import { TestFileDiffCollector } from '../agents/qa/test-file-diff.collector';
+import { PackageTestScriptReader } from '../workspace/commands/package-test-script.reader';
 import type { QaReport } from '../agents/qa/qa-report.types';
 import type { QaResult } from '../agents/qa/qa-result.types';
 import { ReviewReportBuilder } from '../agents/reviewer/review-report.builder';
@@ -60,6 +61,7 @@ export class StepRunner {
     @Inject(EventBus) private readonly events: EventBus,
     @Inject(ATTEMPT_REPOSITORY) private readonly attempts: AttemptRepository,
     @Inject(TestFileDiffCollector) private readonly testDiffs: TestFileDiffCollector,
+    @Inject(PackageTestScriptReader) private readonly testScripts: PackageTestScriptReader,
   ) {}
 
   async run(context: StepRunContext): Promise<StepRunResult> {
@@ -240,6 +242,7 @@ export class StepRunner {
       invocation.toolCalls,
       invocation.durationMs,
       await this.testDiffs.collect(context.baseRef, state.reviewScope),
+      await this.testScripts.read(),
     );
   }
 
@@ -401,6 +404,7 @@ export class StepRunner {
       lastFullRun: report.lastFullRun,
       defects: report.result.defects,
       coverageSummary: ExecutionMessages.coverageSummary(covered, report.result.coverage.length),
+      uncoverableCriteria: report.uncoverableCriteria,
       testFiles: report.result.testFiles,
       warnings: report.warnings,
     };

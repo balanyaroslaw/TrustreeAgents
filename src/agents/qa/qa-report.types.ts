@@ -26,10 +26,26 @@ export interface QaMetrics {
   readonly durationMs: number;
 }
 
+// How the full-suite run was resolved: the run itself, or the command QA named and never ran. One
+// of the two is always null.
+export interface ResolvedFullRun {
+  readonly run: QaFullRun | null;
+  readonly namedButNotRun: string | null;
+}
+
+// A criterion QA could not cover with an automated test, with the reason it gave for that. It is
+// reported rather than held against the step: the Orchestrator and the Reviewer weigh the reason
+// themselves, which no amount of Developer work could do for them.
+export interface QaUncoverableCriterion {
+  readonly criterion: string;
+  readonly reason: string;
+}
+
 export interface QaReport {
   readonly result: QaResult;
   readonly status: QaStatus;
   readonly statusReasons: readonly string[];
+  readonly uncoverableCriteria: readonly QaUncoverableCriterion[];
   readonly scope: QaScope;
   readonly lastFullRun: QaFullRun | null;
   readonly metrics: QaMetrics;

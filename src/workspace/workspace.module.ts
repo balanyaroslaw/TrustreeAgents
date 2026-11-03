@@ -3,6 +3,7 @@ import { AgentCallStore } from './activity/agent-call.store';
 import { APPROVAL_GATE } from './approval/approval.constants';
 import { LoggingApprovalGate } from './approval/logging-approval-gate';
 import { CommandLock } from './commands/command.lock';
+import { PackageTestScriptReader } from './commands/package-test-script.reader';
 import { GitService } from './git/git.service';
 import { FileToolRegistry } from './tools/file-tool.registry';
 import { DeleteFileService } from './tools/delete-file/delete-file.service';
@@ -65,12 +66,19 @@ import { WorkspaceService } from './workspace.service';
     SearchCodeService,
     SearchCodeTool,
     CommandLock,
+    PackageTestScriptReader,
     { provide: APPROVAL_GATE, useClass: LoggingApprovalGate },
     RunCommandValidator,
     RunCommandService,
     RunCommandTool,
     FileToolRegistry,
   ],
-  exports: [WorkspaceService, GitService, FileToolRegistry, AgentCallStore],
+  exports: [
+    WorkspaceService,
+    GitService,
+    FileToolRegistry,
+    AgentCallStore,
+    PackageTestScriptReader,
+  ],
 })
 export class WorkspaceModule {}

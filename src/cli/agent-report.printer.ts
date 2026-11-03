@@ -16,6 +16,7 @@ import type { ReviewResult } from '../agents/reviewer/review-result.types';
 import type { AgentInvocation } from '../execution/agents/agent-invocation.types';
 import type { CallTarget } from '../sdk/call-scope.types';
 import type { ChangedFile } from '../workspace/git/changed-file.types';
+import { PackageTestScriptReader } from '../workspace/commands/package-test-script.reader';
 import { GIT_DEFAULT_BASE_REF } from '../workspace/git/git.constants';
 import type { AgentRunInput } from './agent-run.types';
 
@@ -23,7 +24,10 @@ import type { AgentRunInput } from './agent-run.types';
 // single-agent checkpoint shows exactly what the pipeline will show.
 @Injectable()
 export class AgentReportPrinter {
-  constructor(@Inject(TestFileDiffCollector) private readonly testDiffs: TestFileDiffCollector) {}
+  constructor(
+    @Inject(TestFileDiffCollector) private readonly testDiffs: TestFileDiffCollector,
+    @Inject(PackageTestScriptReader) private readonly testScripts: PackageTestScriptReader,
+  ) {}
 
   async print(
     target: CallTarget,
@@ -73,6 +77,7 @@ export class AgentReportPrinter {
         invocation.toolCalls,
         invocation.durationMs,
         await this.testDiffs.collect(GIT_DEFAULT_BASE_REF, changedAfter),
+        await this.testScripts.read(),
       ),
     );
   }

@@ -154,6 +154,7 @@ export class RunCommand extends DatabaseCommand {
     const run = await this.runs.create({ projectId: project.id, prompt });
     const request: RunRequest = {
       runId: run.id,
+      projectId: project.id,
       workspacePath: this.workspace.root,
       prompt,
       attended: options.tui !== false,

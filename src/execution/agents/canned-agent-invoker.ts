@@ -22,10 +22,7 @@ import type { CommandRunRecord } from '../../workspace/commands/command-run.type
 import { AtomicFileWriter } from '../../workspace/io/atomic-file.writer';
 import { WorkspaceService } from '../../workspace/workspace.service';
 import type { AgentInvocation, AgentUsage } from './agent-invocation.types';
-import type {
-  AgentInvokerFactory,
-  InvokerScope,
-} from './agent-invoker-factory.port.types';
+import type { AgentInvokerFactory, InvokerScope } from './agent-invoker-factory.port.types';
 import type { AgentInvoker } from './agent-invoker.port.types';
 import {
   CANNED_CHANGE_SEQUENCE,
@@ -72,7 +69,10 @@ export class CannedAgentInvoker implements AgentInvoker, AgentInvokerFactory {
     return this;
   }
 
-  async invokeAgent<TOutput>(role: AgentRole, inputText: string): Promise<AgentInvocation<TOutput>> {
+  async invokeAgent<TOutput>(
+    role: AgentRole,
+    inputText: string,
+  ): Promise<AgentInvocation<TOutput>> {
     const invocation = await this.agentInvocation<TOutput>(role, inputText);
     await this.record(role, null);
 
@@ -142,8 +142,7 @@ export class CannedAgentInvoker implements AgentInvoker, AgentInvokerFactory {
       changes: [
         {
           path: CANNED_SOURCE_FILE,
-          action:
-            this.developerCalls === FIRST_CALL ? ChangeAction.Created : ChangeAction.Modified,
+          action: this.developerCalls === FIRST_CALL ? ChangeAction.Created : ChangeAction.Modified,
           description: 'Holds the constant this dry-run step contributes.',
         },
       ],
@@ -166,6 +165,7 @@ export class CannedAgentInvoker implements AgentInvoker, AgentInvokerFactory {
       summary:
         'Wrote one test file for the changed module and ran the full suite, which passed. No ' +
         'model was called: this is the canned QA answer used by --dry-run.',
+      fullSuiteCommand: CANNED_FULL_TEST_COMMAND,
       coverage: [],
       fileCoverage: [{ path: CANNED_SOURCE_FILE, level: CoverageLevel.Covered, tests: [] }],
       testFiles: [

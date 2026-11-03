@@ -31,6 +31,8 @@ export class AgentInputBuilder {
           userPrompt: task,
           isExistingProject: survey.isExistingProject,
           workspaceDocuments: survey.documents,
+          // One agent call outside a run: there is no project history to carry into it.
+          previousFailures: [],
           previousQuestionsAndAnswers: [],
         }),
         step: null,

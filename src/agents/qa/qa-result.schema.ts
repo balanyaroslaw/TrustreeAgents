@@ -15,6 +15,14 @@ export const qaResultSchema = z.object({
         'overall picture. Example: "Covered both refund criteria with 6 tests against the real ' +
         'database; the notes match the diff except for the currency check, which is missing."',
     ),
+  // No minimum length: "npm test" is eight characters and is the commonest right answer.
+  fullSuiteCommand: z
+    .string()
+    .describe(
+      'The exact command you consider the full test suite of this project, as you ran it. The ' +
+        'system looks this command up among the commands you actually ran and takes its real ' +
+        'exit code, so it must match one of them exactly.',
+    ),
   coverage: z
     .array(
       z.object({

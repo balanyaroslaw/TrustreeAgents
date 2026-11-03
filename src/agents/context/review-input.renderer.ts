@@ -9,6 +9,7 @@ import {
   PREVIOUS_ISSUES_HEADER,
   QA_DEFECTS_HEADER,
   QA_FACTS_HEADER,
+  QA_UNCOVERABLE_HEADER,
   REVIEW_CHANGED_CODE_LABELS,
 } from './review-input.constants';
 import type { QaFactsForReview, ReviewInputPacket } from './review-input.types';
@@ -54,6 +55,14 @@ export class ReviewInputRenderer {
     }
     if (facts.coverageSummary !== '') {
       lines.push(`Coverage: ${facts.coverageSummary}`);
+    }
+    if (facts.uncoverableCriteria.length > EMPTY) {
+      lines.push(QA_UNCOVERABLE_HEADER);
+      lines.push(
+        ...facts.uncoverableCriteria.map(
+          (entry) => `${BULLET}${entry.criterion} - ${entry.reason}`,
+        ),
+      );
     }
     if (facts.defects.length > EMPTY) {
       lines.push(QA_DEFECTS_HEADER);

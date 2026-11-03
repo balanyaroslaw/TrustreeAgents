@@ -46,6 +46,12 @@ export const SUSPICIOUS_TEST_MARKERS: readonly string[] = [
   'it.todo(',
 ];
 
+// How much of a criterion a notTested entry must name before it counts as referring to it: a
+// two-word "what" would otherwise justify every criterion in the step.
+export const MIN_CRITERION_REFERENCE_CHARACTERS = 12;
+
+export const WHITESPACE_PATTERN = /\s+/g;
+
 export const DIFF_FILE_HEADER_PATTERN = /^diff --git a\/(?:.+) b\/(.+)$/;
 export const ADDED_LINE_PREFIX = '+';
 export const ADDED_FILE_HEADER_PREFIX = '+++';

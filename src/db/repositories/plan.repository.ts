@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { JsonValue } from '../json.value';
 import { PrismaService } from '../prisma.service';
-import { STEP_STATUS_TO_DB } from '../db.constants';
+import { RUN_STATUS_TO_DB, STEP_STATUS_TO_DB } from '../db.constants';
+import type { FailedStepSummary } from '../../agents/orchestrator/plan/failed-step.types';
 import type {
   NewRun,
   PlanDraft,
@@ -10,8 +11,17 @@ import type {
 } from '../../execution/persistence/persistence.types';
 import type { PlanRepository as PlanRepositoryPort } from '../../execution/persistence/plan-repository.port.types';
 import { FIRST_STEP_INDEX } from '../../execution/execution.constants';
+import { RunStatus } from '../../execution/run-status.enum';
+import { StepStatus } from '../../execution/step-status.enum';
 import { GuardedRepository } from './guarded.repository';
 import { RunRepository } from './run.repository';
+
+// How far back the failure history of a project is read. Older runs described a different
+// codebase, so their failures say little about how the work should be framed now.
+const HISTORY_RUNS = 3;
+const LAST_ATTEMPT = 1;
+const FIRST_ENTRY = 0;
+const NO_REASON_RECORDED = '';
 
 // The plan of a run as the executor needs it. Steps are addressed by their position in the plan,
 // which is what the executor knows, and resolved to their row here. The columns of the run row
@@ -47,6 +57,49 @@ export class PlanRepository extends GuardedRepository implements PlanRepositoryP
     );
   }
 
+  // The failed steps of a project, not of one run, so the history survives across runs on the
+  // same workspace. The run that is planning is still running and is therefore skipped, as is
+  // any other unfinished run: a step that has not finished failing is not history yet.
+  // A read failure costs the planner this section and nothing else, so it is guarded like a
+  // write: planning blind is worse than not planning at all.
+  async failedSteps(projectId: string, limit: number): Promise<readonly FailedStepSummary[]> {
+    const read = await this.guard('read the failed steps of the project', () =>
+      this.prisma.run.findMany({
+        where: { projectId, status: { not: RUN_STATUS_TO_DB[RunStatus.Running] } },
+        orderBy: { startedAt: 'desc' },
+        take: HISTORY_RUNS,
+        select: {
+          steps: {
+            where: { status: STEP_STATUS_TO_DB[StepStatus.Failed] },
+            orderBy: { index: 'asc' },
+            select: {
+              title: true,
+              attemptsUsed: true,
+              failureReason: true,
+              attempts: {
+                orderBy: { attempt: 'desc' },
+                take: LAST_ATTEMPT,
+                select: { note: true },
+              },
+            },
+          },
+        },
+      }),
+    );
+
+    return (read.value ?? [])
+      .flatMap((run) =>
+        run.steps.map((step) => ({
+          title: step.title,
+          attempts: step.attemptsUsed,
+          // The reason the step was given up: what the executor stored on the step, and
+          // otherwise what the code noted about its last attempt.
+          reason: step.failureReason ?? step.attempts[FIRST_ENTRY]?.note ?? NO_REASON_RECORDED,
+        })),
+      )
+      .slice(FIRST_ENTRY, limit);
+  }
+
   async updateStepStatus(update: StepStatusUpdate): Promise<void> {
     await this.guardWrite('update the step', () =>
       this.prisma.planStep.update({
@@ -68,11 +121,6 @@ export class PlanRepository extends GuardedRepository implements PlanRepositoryP
   // carries a total kept by hand.
   async closeRun(closure: RunClosure): Promise<void> {
     await this.runs.recomputeTotals(closure.runId);
-    await this.runs.close(
-      closure.runId,
-      closure.status,
-      closure.reportPath,
-      closure.failureReason,
-    );
+    await this.runs.close(closure.runId, closure.status, closure.reportPath, closure.failureReason);
   }
 }

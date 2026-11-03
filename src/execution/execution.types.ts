@@ -14,6 +14,8 @@ import type { StepStatus } from './step-status.enum';
 
 export interface RunRequest {
   readonly runId: string;
+  // The project this run belongs to, so the planner can be shown what already failed here.
+  readonly projectId: string;
   readonly workspacePath: string;
   readonly prompt: string;
   readonly attended: boolean;
