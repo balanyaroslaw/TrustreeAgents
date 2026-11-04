@@ -14,6 +14,7 @@ import { DecisionGuard } from '../agents/orchestrator/decide/decision.guard';
 import { DecisionInputRenderer } from '../agents/orchestrator/decide/decision-input.renderer';
 import type { PreviousAttemptDecision } from '../agents/orchestrator/decide/decision-input.types';
 import { ReworkBriefBuilder } from '../agents/orchestrator/decide/rework-brief.builder';
+import { ReworkBriefFactsCollector } from '../agents/orchestrator/decide/rework-brief-facts.collector';
 import { StepDecisionKind } from '../agents/orchestrator/decide/step-decision.enum';
 import type {
   DeferredIssue,
@@ -62,6 +63,7 @@ export class StepRunner {
     @Inject(ATTEMPT_REPOSITORY) private readonly attempts: AttemptRepository,
     @Inject(TestFileDiffCollector) private readonly testDiffs: TestFileDiffCollector,
     @Inject(PackageTestScriptReader) private readonly testScripts: PackageTestScriptReader,
+    @Inject(ReworkBriefFactsCollector) private readonly briefFacts: ReworkBriefFactsCollector,
   ) {}
 
   async run(context: StepRunContext): Promise<StepRunResult> {
@@ -111,8 +113,19 @@ export class StepRunner {
         }
         const { qaReport, reviewReport } = state;
         if (qaReport !== null && reviewReport !== null) {
+          // Gathered by code, so the next attempt starts with the failing output, the code around
+          // each blocking issue and its own history already in the packet.
+          const facts = await this.briefFacts.collect({
+            baseRef: context.baseRef,
+            blockingIssues: ReworkBriefBuilder.blockingIssues(reviewReport),
+            commandRuns: state.commandRuns,
+            testScript: state.testScript,
+            // The run the QA report judged the step by, so the brief quotes that same run.
+            fullSuiteCommand: qaReport.lastFullRun?.command ?? null,
+            previousDecisions: decisions,
+          });
           carry.fromDecision(
-            ReworkBriefBuilder.build(guarded.decision, qaReport, reviewReport),
+            ReworkBriefBuilder.build(guarded.decision, qaReport, reviewReport, facts),
             qaReport.result.defects,
             reviewReport.result.issues,
             state.changedCode,
@@ -233,6 +246,8 @@ export class StepRunner {
     }
     // The tests QA wrote are part of what the Reviewer reviews.
     state.reviewScope = await this.git.changedFiles(context.baseRef);
+    state.commandRuns = invocation.commandRuns;
+    state.testScript = await this.testScripts.read();
     state.qaReport = QaReportBuilder.build(
       invocation.output,
       state.changedCode,
@@ -242,7 +257,7 @@ export class StepRunner {
       invocation.toolCalls,
       invocation.durationMs,
       await this.testDiffs.collect(context.baseRef, state.reviewScope),
-      await this.testScripts.read(),
+      state.testScript,
     );
   }
 

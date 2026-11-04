@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ReferencedCodeReader } from '../agents/orchestrator/decide/referenced-code.reader';
+import { ReworkBriefFactsCollector } from '../agents/orchestrator/decide/rework-brief-facts.collector';
 import { TestFileDiffCollector } from '../agents/qa/test-file-diff.collector';
 import { AttemptRepository } from '../db/repositories/attempt.repository';
 import { PlanRepository } from '../db/repositories/plan.repository';
@@ -32,6 +34,8 @@ import { WorkspaceSurveyor } from './workspace.surveyor';
     StepCheckpoint,
     WorkspaceSurveyor,
     TestFileDiffCollector,
+    ReferencedCodeReader,
+    ReworkBriefFactsCollector,
     CannedAgentInvoker,
     { provide: AGENT_INVOKER_FACTORY, useExisting: SdkInvokerFactory },
     { provide: PLAN_REPOSITORY, useExisting: PlanRepository },

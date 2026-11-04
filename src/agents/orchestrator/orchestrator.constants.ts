@@ -1,7 +1,7 @@
 export const ORCHESTRATOR_PLAN_MAX_TURNS = 25;
 export const ORCHESTRATOR_TASKLESS_MAX_TURNS = 2;
 
-export const MAX_PLAN_STEPS = 12;
+export const MAX_PLAN_STEPS = 4;
 export const MAX_CLARIFYING_QUESTIONS = 4;
 export const MIN_ACCEPTANCE_CRITERIA = 1;
 export const MIN_DECISION_REASON_CHARACTERS = 30;

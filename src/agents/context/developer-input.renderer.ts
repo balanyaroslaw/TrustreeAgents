@@ -1,4 +1,5 @@
 import { ReworkBriefBuilder } from '../orchestrator/decide/rework-brief.builder';
+import { ReworkBriefRenderer } from '../orchestrator/decide/rework-brief.renderer';
 import {
   DEVELOPER_CHANGED_CODE_LABELS,
   DEVELOPER_MAX_LISTED_FILES,
@@ -41,12 +42,18 @@ export class DeveloperInputRenderer {
     return note === null ? null : [SYSTEM_NOTE_HEADER, note].join(LINE_SEPARATOR);
   }
 
+  // The findings first, then what code gathered about them: the diff stat, the output of the run
+  // that failed, the code around each blocking issue and what earlier attempts were asked to do.
+  // A first attempt has no brief, so none of this is rendered there.
   private static rework(packet: DeveloperInputPacket): string | null {
-    if (packet.reworkBrief === null) {
+    const { reworkBrief } = packet;
+    if (reworkBrief === null) {
       return null;
     }
-    const brief = ReworkBriefBuilder.render(packet.reworkBrief);
+    const issues = ReworkBriefBuilder.render(reworkBrief);
+    const gathered = ReworkBriefRenderer.render(reworkBrief);
+    const body = [issues, gathered].filter((section) => section !== '');
 
-    return brief === '' ? null : [REWORK_HEADER, brief].join(SECTION_SEPARATOR);
+    return body.length === 0 ? null : [REWORK_HEADER, ...body].join(SECTION_SEPARATOR);
   }
 }

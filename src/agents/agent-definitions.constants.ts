@@ -44,6 +44,11 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
         'failing call.',
       'Report only what you actually did. Anything you did not do, or are unsure about, goes ' +
         'into openIssues.',
+      'The rework brief already contains the failing test output, the code around each reported ' +
+        'issue, and what you changed so far. Do not re-read what it quotes: read further only ' +
+        'where the brief is not enough to make the fix.',
+      'When an earlier attempt failed, do not repeat its approach. Say in your summary what you ' +
+        'did differently.',
     ],
     outputFormat: [
       'status: "completed" (task fully done), "partial" (some parts not done) or "blocked" ' +

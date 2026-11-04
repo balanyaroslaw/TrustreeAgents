@@ -4,13 +4,14 @@ import type { QaDefect } from '../../qa/qa-result.types';
 import type { ReviewReport } from '../../reviewer/review-report.types';
 import type { ReviewIssue } from '../../reviewer/review-result.types';
 import { BLOCKING_SEVERITIES } from '../../reviewer/reviewer.constants';
+import { ReworkBriefBudget } from './rework-brief.budget';
 import {
   DEFERRED_HEADER,
   QA_DEFECTS_HEADER,
   REVIEW_ISSUES_HEADER,
   REWORK_FOCUS_HEADER,
 } from './rework-brief.constants';
-import type { ReworkBrief } from './rework-brief.types';
+import type { ReworkBrief, ReworkBriefFacts } from './rework-brief.types';
 import type { StepDecision } from './step-decision.types';
 
 const SECTION_SEPARATOR = '\n\n';
@@ -21,14 +22,17 @@ const FIRST_ITEM = 1;
 const EMPTY = 0;
 
 // The judgement of the Orchestrator comes first, then the findings of QA and the Reviewer exactly
-// as they recorded them: facts are copied, never rephrased.
+// as they recorded them: facts are copied, never rephrased. The facts gathered by code are then
+// added as far as the packet budget allows, so the next attempt arrives knowing what failed and
+// what the reported code looks like instead of fetching both over a dozen tool calls.
 export class ReworkBriefBuilder {
   static build(
     decision: StepDecision,
     qaReport: QaReport,
     reviewReport: ReviewReport,
+    facts: ReworkBriefFacts,
   ): ReworkBrief {
-    return {
+    const core: ReworkBrief = {
       focus: decision.reworkFocus,
       qaDefects: qaReport.result.defects.filter((defect) =>
         SEVERE_DEFECT_SEVERITIES.includes(defect.severity),
@@ -38,6 +42,16 @@ export class ReworkBriefBuilder {
       ),
       deferredIssues: decision.deferredIssues,
     };
+
+    return { ...core, ...ReworkBriefBudget.fit(ReworkBriefBuilder.render(core).length, facts) };
+  }
+
+  // The blocking issues the excerpts are read for: the same list the brief shows, so the Developer
+  // never sees a quoted file that is not in the findings.
+  static blockingIssues(reviewReport: ReviewReport): readonly ReviewIssue[] {
+    return reviewReport.result.issues.filter((issue) =>
+      BLOCKING_SEVERITIES.includes(issue.severity),
+    );
   }
 
   static render(brief: ReworkBrief): string {

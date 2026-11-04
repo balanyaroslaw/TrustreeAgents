@@ -3,6 +3,7 @@ import type { DeveloperReport } from '../agents/developer/developer-report.types
 import type { GuardedDecision } from '../agents/orchestrator/decide/decision-outcome.types';
 import type { QaReport } from '../agents/qa/qa-report.types';
 import type { ReviewReport } from '../agents/reviewer/review-report.types';
+import type { CommandRunRecord } from '../workspace/commands/command-run.types';
 import type { ChangedFile } from '../workspace/git/changed-file.types';
 import type { AttemptOutcome } from './execution.types';
 
@@ -20,6 +21,10 @@ export class AttemptState {
   reviewScope: readonly ChangedFile[] = [];
   note: string | null = null;
   verificationSkipped = false;
+  // What QA actually ran, and the project's own test script, so the rework brief can quote the
+  // output of the run that failed instead of leaving the Developer to guess it from the defects.
+  commandRuns: readonly CommandRunRecord[] = [];
+  testScript: string | null = null;
   // The step_attempts row this attempt was opened as, so every agent call it makes is charged to
   // it. Null when the row could not be written: the attempt still runs, unattributed.
   attemptId: string | null = null;
