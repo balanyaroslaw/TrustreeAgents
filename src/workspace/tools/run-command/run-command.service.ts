@@ -7,6 +7,7 @@ import { ChildEnvironmentBuilder } from '../../commands/child-environment.builde
 import { AgentCallStore } from '../../activity/agent-call.store';
 import { CommandLock } from '../../commands/command.lock';
 import { CommandRisk } from '../../commands/command-risk.enum';
+import { TestRunAnnotator } from '../../commands/failures/test-run.annotator';
 import { OutputCollector } from '../../commands/output.collector';
 import { OutputTruncator } from '../../commands/output.truncator';
 import { ErrorInspector } from '../../utils/error.inspector';
@@ -17,6 +18,7 @@ import { FileToolName } from '../../enums/file-tool-name.enum';
 import type { CommandOutcome, ValidatedCommandRequest } from './run-command.types';
 
 const LINE_BREAK = '\n';
+const SECTION_SEPARATOR = '\n\n';
 const NO_SHELL = false;
 const WINDOWS_PLATFORM = 'win32';
 const TERMINATE_SIGNAL = 'SIGTERM';
@@ -32,6 +34,7 @@ export class RunCommandService {
     @Inject(APPROVAL_GATE) private readonly approvalGate: ApprovalGate,
     // Present only while an agent call is running; without it the command is simply not recorded.
     @Inject(AgentCallStore) private readonly calls: AgentCallStore,
+    @Inject(TestRunAnnotator) private readonly annotator: TestRunAnnotator,
   ) {}
 
   async run(request: ValidatedCommandRequest): Promise<string> {
@@ -51,29 +54,52 @@ export class RunCommandService {
 
     const outcome = await this.spawnCommand(request);
     const output = RunCommandService.outputOf(outcome);
+    const recorders = this.calls.current();
+    // Computed before the run is recorded, because the note about an identical earlier run is
+    // about the runs recorded so far, and recorded with the run, so every later reader of it -
+    // the QA report, the rework brief, the run diagnosis - sees the same analysis.
+    const annotation = await this.annotator.annotate(
+      request.displayCommand,
+      output,
+      outcome.exitCode,
+      recorders,
+    );
 
-    this.calls.current()?.commands.record({
+    recorders?.commands.record({
       command: request.displayCommand,
       cwd: request.cwd,
       exitCode: outcome.exitCode,
       timedOut: outcome.timedOut,
       durationMs: outcome.durationMs,
       outputTail: output,
+      testRunKind: annotation.testRunKind,
+      failureReport: annotation.failureReport,
     });
 
     // A timeout is an outcome of the command, not a failure of the tool: it is returned as the
     // "Error: ..." text the model reads, with whatever the command printed before it was killed.
     if (outcome.timedOut) {
-      return WorkspaceMessages.error(WorkspaceMessages.commandTimedOut(request.timeoutMs, output));
+      return RunCommandService.annotated(
+        annotation.notes,
+        WorkspaceMessages.error(WorkspaceMessages.commandTimedOut(request.timeoutMs, output)),
+      );
     }
 
-    return WorkspaceMessages.commandResult(
-      request.displayCommand,
-      outcome.exitCode,
-      outcome.signal,
-      outcome.durationMs,
-      output,
+    return RunCommandService.annotated(
+      annotation.notes,
+      WorkspaceMessages.commandResult(
+        request.displayCommand,
+        outcome.exitCode,
+        outcome.signal,
+        outcome.durationMs,
+        output,
+      ),
     );
+  }
+
+  // What code computed goes above the raw result, which stays exactly as it was.
+  private static annotated(notes: readonly string[], result: string): string {
+    return [...notes, result].join(SECTION_SEPARATOR);
   }
 
   private spawnCommand(request: ValidatedCommandRequest): Promise<CommandOutcome> {

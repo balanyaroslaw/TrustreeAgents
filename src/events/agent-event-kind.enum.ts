@@ -9,6 +9,7 @@ export enum AgentEventKind {
   StepAccepted = 'step_accepted',
   StepFailed = 'step_failed',
   BudgetUpdated = 'budget_updated',
+  RunDiagnosed = 'run_diagnosed',
   RunFinished = 'run_finished',
   AgentStarted = 'agent_started',
   ToolCalled = 'tool_called',

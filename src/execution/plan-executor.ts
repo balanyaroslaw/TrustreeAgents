@@ -27,6 +27,7 @@ import { AgentFailurePolicy } from './agents/agent-failure.policy';
 import { AgentInvocationError } from './agents/agent-invocation.error';
 import type { AgentInvokerFactory } from './agents/agent-invoker-factory.port.types';
 import { BudgetExhaustedError } from './budget/budget-exhausted.error';
+import { HostBlockedError } from './diagnosis/host-blocked.error';
 import { RunBudget } from './budget/run-budget';
 import { StepCheckpoint } from './checkpoint/step-checkpoint';
 import {
@@ -46,6 +47,7 @@ import { ExecutionMessages } from './execution.messages';
 import type { RunOutcome, RunRequest, StepOutcome, StepRunResult } from './execution.types';
 import type { UserPrompter } from './interaction/user-prompter.port.types';
 import type { PlanRepository } from './persistence/plan-repository.port.types';
+import { PortPreflight } from './preflight/port.preflight';
 import { RunReportBuilder } from './report/run-report.builder';
 import { RunReportFormatter } from './report/run-report.formatter';
 import { RunIdFormatter } from './run-id.formatter';
@@ -71,6 +73,7 @@ export class PlanExecutor {
     @Inject(StepCheckpoint) private readonly checkpoint: StepCheckpoint,
     @Inject(StepRunner) private readonly stepRunner: StepRunner,
     @Inject(WorkspaceSurveyor) private readonly surveyor: WorkspaceSurveyor,
+    @Inject(PortPreflight) private readonly ports: PortPreflight,
     @Inject(EventBus) private readonly events: EventBus,
     @Inject(AGENT_INVOKER_FACTORY) private readonly invokers: AgentInvokerFactory,
     @Inject(PLAN_REPOSITORY) private readonly plans: PlanRepository,
@@ -139,6 +142,12 @@ export class PlanExecutor {
       throw new RunRefusedError(
         ExecutionMessages.workspaceMismatch(request.workspacePath, this.workspace.root),
       );
+    }
+    // Checked before anything is created: a port the workspace needs and another container holds
+    // would fail every attempt of every step identically, and no agent can fix it from here.
+    const conflicts = await this.ports.conflicts();
+    if (conflicts.length > EMPTY) {
+      throw new RunRefusedError(ExecutionMessages.portsHeldByOtherContainers(conflicts));
     }
     await this.checkpoint.prepareRepository(request.runId);
 
@@ -470,6 +479,16 @@ export class PlanExecutor {
     state.summary = await this.summarize(request, state, budget, caller);
 
     const report = RunReportBuilder.build(request, state, ledger, budget);
+    // Said in the terminal as well as in the report, and said the same way: the person who
+    // started the run should not have to open a file to learn why it stopped.
+    if (report.diagnosis !== null) {
+      this.events.emit({
+        kind: AgentEventKind.RunDiagnosed,
+        runId: request.runId,
+        at: Date.now(),
+        diagnosis: report.diagnosis,
+      });
+    }
     const reportPath = RunIdFormatter.reportPath(request.runId);
     await this.write(reportPath, RunReportFormatter.format(report));
     await this.checkpoint.commitReport(request.runId, reportPath);
@@ -581,7 +600,7 @@ export class PlanExecutor {
       state.stop(RunStatus.Cancelled, ExecutionMessages.cancelled());
       return;
     }
-    if (error instanceof BudgetExhaustedError) {
+    if (error instanceof BudgetExhaustedError || error instanceof HostBlockedError) {
       state.stop(RunStatus.Failed, error.message);
       return;
     }

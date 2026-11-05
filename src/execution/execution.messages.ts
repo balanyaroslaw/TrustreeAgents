@@ -1,5 +1,6 @@
 import type { AgentRole } from '../agents/agent-role.enum';
 import type { OrchestratorTask } from '../agents/orchestrator/orchestrator-task.enum';
+import type { PortConflict } from '../workspace/docker/docker.types';
 import type { AgentFailureKind } from './agents/agent-failure.enum';
 import { MAX_LISTED_DIRTY_PATHS } from './execution.constants';
 
@@ -27,6 +28,36 @@ export class ExecutionMessages {
     return (
       `the workspace has ${ExecutionMessages.count(paths.length, 'uncommitted change')} ` +
       `(${listed}). Commit or stash your changes first`
+    );
+  }
+
+  static portsHeldByOtherContainers(conflicts: readonly PortConflict[]): string {
+    const listed = conflicts.map(ExecutionMessages.portConflict).join(NAME_SEPARATOR);
+
+    return (
+      `${ExecutionMessages.count(conflicts.length, 'host port')} the workspace publishes ` +
+      `${conflicts.length === SINGLE ? 'is' : 'are'} held by a container that is not part of ` +
+      `this workspace: ${listed}. Remove ${conflicts.length === SINGLE ? 'it' : 'them'} and ` +
+      'start the run again'
+    );
+  }
+
+  private static portConflict(conflict: PortConflict): string {
+    const project =
+      conflict.composeProject === null
+        ? ''
+        : ` of the compose project "${conflict.composeProject}"`;
+
+    return (
+      `port ${conflict.port} is held by the container "${conflict.container}"${project} ` +
+      `(remove it with: docker rm -f ${conflict.container})`
+    );
+  }
+
+  static hostBlocked(advice: string): string {
+    return (
+      'the test suite failed on a problem of this machine, which no change to the workspace can ' +
+      `fix: ${advice}. The run stopped instead of attempting the step again`
     );
   }
 

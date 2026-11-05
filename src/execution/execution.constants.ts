@@ -1,4 +1,5 @@
 import { AgentRole } from '../agents/agent-role.enum';
+import { AgentFailureKind } from './agents/agent-failure.enum';
 import type { DefinedAgentRole } from '../agents/agent-definition.types';
 import type { GitIdentity } from '../workspace/git/git.types';
 
@@ -77,6 +78,14 @@ export const REQUIRED_CALL_TOKEN_RESERVE = 20_000;
 export const OPTIONAL_CALL_TOKEN_RESERVE = 80_000;
 
 export const MAX_LISTED_DIRTY_PATHS = 8;
+
+// How a call the code stopped is named to the agent whose next attempt continues its work. Only
+// the failures an attempt can absorb appear here: anything else ends the run.
+export const AGENT_STOP_LABELS: Readonly<Partial<Record<AgentFailureKind, string>>> = {
+  [AgentFailureKind.MaxTurns]: 'max_turns',
+  [AgentFailureKind.BudgetExceeded]: 'its token cap',
+  [AgentFailureKind.InvalidOutput]: 'an unusable final answer',
+};
 
 export const IMMEDIATE_EXIT_CODE = 130;
 

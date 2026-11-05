@@ -25,7 +25,7 @@ export class AgentToolAdapter {
       // Our tools never throw: they return "Error: ..." with a hint. An unexpected exception is
       // caught here and handed to the model as text, so one bad call cannot lose the run.
       execute: async (input: unknown): Promise<string> => {
-        context.countToolCall();
+        context.countToolCall(agentTool.name, input);
         emitter?.toolCalled(agentTool.name, AgentToolAdapter.summaryOf(input));
         try {
           return await agentTool.execute(input);

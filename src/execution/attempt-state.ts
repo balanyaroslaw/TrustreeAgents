@@ -1,9 +1,11 @@
 import type { QaBrief } from '../agents/context/qa-brief.types';
+import type { PreviousStop } from '../agents/orchestrator/decide/rework-brief.types';
 import type { DeveloperReport } from '../agents/developer/developer-report.types';
 import type { GuardedDecision } from '../agents/orchestrator/decide/decision-outcome.types';
 import type { QaReport } from '../agents/qa/qa-report.types';
 import type { ReviewReport } from '../agents/reviewer/review-report.types';
 import type { CommandRunRecord } from '../workspace/commands/command-run.types';
+import { FullSuiteRunSelector } from '../workspace/commands/failures/full-suite-run.selector';
 import type { ChangedFile } from '../workspace/git/changed-file.types';
 import type { AttemptOutcome } from './execution.types';
 
@@ -21,6 +23,9 @@ export class AttemptState {
   reviewScope: readonly ChangedFile[] = [];
   note: string | null = null;
   verificationSkipped = false;
+  // Set when the call of an agent was stopped before it finished: what it had done by then, so
+  // the next attempt of that agent is told rather than left to rediscover it.
+  previousStop: PreviousStop | null = null;
   // What QA actually ran, and the project's own test script, so the rework brief can quote the
   // output of the run that failed instead of leaving the Developer to guess it from the defects.
   commandRuns: readonly CommandRunRecord[] = [];
@@ -50,6 +55,9 @@ export class AttemptState {
       reviewReport: this.reviewReport,
       guarded: this.guarded,
       note: this.note,
+      // Read from the runs themselves, which carry the analysis of their own output: the report
+      // of a step is never built from what an agent said about its test run.
+      failureReport: FullSuiteRunSelector.lastFailing(this.commandRuns)?.failureReport ?? null,
       tokens: tokensNow - this.tokensBefore,
       durationMs: Date.now() - this.startedAt,
     };

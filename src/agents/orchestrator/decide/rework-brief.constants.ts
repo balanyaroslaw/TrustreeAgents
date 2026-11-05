@@ -17,5 +17,6 @@ export const MAX_EXCERPT_TOTAL_LINES = 400;
 export const EXCERPT_MERGE_DISTANCE_LINES = 80;
 export const MAX_DIFF_STAT_LINES = 60;
 export const MAX_PREVIOUS_ATTEMPT_CHARACTERS = 200;
+export const MAX_PREVIOUS_STOP_PATHS = 10;
 // The whole assembled brief, issue list included, must fit in this.
 export const MAX_REWORK_BRIEF_CHARACTERS = 12_000;

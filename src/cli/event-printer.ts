@@ -3,12 +3,16 @@ import type { AgentEvent, AgentEventListener } from '../events/agent-event.types
 import { CompactNumberFormatter } from '../agents/utils/compact-number.formatter';
 import { DurationFormatter } from '../agents/utils/duration.formatter';
 import type { RunPlanStep } from '../agents/orchestrator/plan/run-plan.types';
+import { RunDiagnosisFormatter } from '../execution/diagnosis/run-diagnosis.formatter';
+import { RunDiagnosisMessages } from '../execution/diagnosis/run-diagnosis.messages';
+import type { RunDiagnosis } from '../execution/diagnosis/run-diagnosis.types';
 import {
   ACCEPTED_LABEL,
   ATTEMPT_LABEL,
   BUDGET_LABEL,
   CAP_LABEL,
   DECISION_LABEL,
+  DIAGNOSIS_INDENT,
   EVENT_PREFIX,
   FAILED_LABEL,
   FINISHED_LABEL,
@@ -52,6 +56,17 @@ export class EventPrinter implements AgentEventListener {
     if (event.kind === AgentEventKind.PlanCreated) {
       console.log(EventPrinter.planOf(event.plan));
     }
+    if (event.kind === AgentEventKind.RunDiagnosed) {
+      console.log(EventPrinter.diagnosisOf(event.diagnosis));
+    }
+  }
+
+  // Why the run did not complete, exactly as the report says it: the executor computed it and
+  // this prints it, so the terminal and reports/run-<id>.md carry the same text.
+  private static diagnosisOf(diagnosis: RunDiagnosis): string {
+    return RunDiagnosisFormatter.lines(diagnosis)
+      .map((line) => `${DIAGNOSIS_INDENT}${line}`)
+      .join('\n');
   }
 
   // The plan as the user has to read it before the steps run: one title per step with its
@@ -112,6 +127,9 @@ export class EventPrinter implements AgentEventListener {
         `${CompactNumberFormatter.format(event.remaining)} of ` +
         `${CompactNumberFormatter.format(event.limit)} left`
       );
+    }
+    if (event.kind === AgentEventKind.RunDiagnosed) {
+      return RunDiagnosisMessages.title();
     }
     if (event.kind === AgentEventKind.RunFinished) {
       return `${RUN_LABEL} ${event.status}`;

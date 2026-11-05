@@ -1,6 +1,7 @@
 import { ReworkBriefBuilder } from '../orchestrator/decide/rework-brief.builder';
 import { ReworkBriefRenderer } from '../orchestrator/decide/rework-brief.renderer';
 import {
+  CONTINUATION_HEADER,
   DEVELOPER_CHANGED_CODE_LABELS,
   DEVELOPER_MAX_LISTED_FILES,
   REWORK_HEADER,
@@ -53,7 +54,10 @@ export class DeveloperInputRenderer {
     const issues = ReworkBriefBuilder.render(reworkBrief);
     const gathered = ReworkBriefRenderer.render(reworkBrief);
     const body = [issues, gathered].filter((section) => section !== '');
+    const header = ReworkBriefBuilder.hasFindings(reworkBrief)
+      ? REWORK_HEADER
+      : CONTINUATION_HEADER;
 
-    return body.length === 0 ? null : [REWORK_HEADER, ...body].join(SECTION_SEPARATOR);
+    return body.length === 0 ? null : [header, ...body].join(SECTION_SEPARATOR);
   }
 }

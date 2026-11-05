@@ -3,7 +3,10 @@ import { AgentCallStore } from './activity/agent-call.store';
 import { APPROVAL_GATE } from './approval/approval.constants';
 import { LoggingApprovalGate } from './approval/logging-approval-gate';
 import { CommandLock } from './commands/command.lock';
+import { TestRunAnnotator } from './commands/failures/test-run.annotator';
 import { PackageTestScriptReader } from './commands/package-test-script.reader';
+import { ComposePortsReader } from './docker/compose-ports.reader';
+import { DockerService } from './docker/docker.service';
 import { GitService } from './git/git.service';
 import { FileToolRegistry } from './tools/file-tool.registry';
 import { DeleteFileService } from './tools/delete-file/delete-file.service';
@@ -41,6 +44,8 @@ import { WorkspaceService } from './workspace.service';
     { provide: WORKSPACE_ROOT, useFactory: () => WorkspaceRootResolver.fromArgv(process.argv) },
     WorkspaceService,
     GitService,
+    DockerService,
+    ComposePortsReader,
     AgentCallStore,
     ReadFileValidator,
     ReadFileService,
@@ -67,6 +72,7 @@ import { WorkspaceService } from './workspace.service';
     SearchCodeTool,
     CommandLock,
     PackageTestScriptReader,
+    TestRunAnnotator,
     { provide: APPROVAL_GATE, useClass: LoggingApprovalGate },
     RunCommandValidator,
     RunCommandService,
@@ -76,6 +82,8 @@ import { WorkspaceService } from './workspace.service';
   exports: [
     WorkspaceService,
     GitService,
+    DockerService,
+    ComposePortsReader,
     FileToolRegistry,
     AgentCallStore,
     PackageTestScriptReader,

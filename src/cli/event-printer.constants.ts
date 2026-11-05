@@ -16,4 +16,5 @@ export const ACCEPTED_LABEL = 'accepted';
 export const STEP_FAILED_LABEL = 'failed:';
 export const BUDGET_LABEL = 'budget';
 export const RUN_LABEL = 'run';
+export const DIAGNOSIS_INDENT = '    ';
 export const NO_COMMIT_LABEL = 'no commit';

@@ -2,6 +2,7 @@ import { AgentRole } from '../../agents/agent-role.enum';
 import type { QaStatus } from '../../agents/qa/qa-status.enum';
 import type { ReviewVerdict } from '../../agents/reviewer/review-verdict.enum';
 import type { AgentCallLedger } from '../agents/agent-call.ledger';
+import { RunDiagnosisBuilder } from '../diagnosis/run-diagnosis.builder';
 import type { RunBudget } from '../budget/run-budget';
 import type { AgentCallRecord, AttemptOutcome, RunRequest, StepOutcome } from '../execution.types';
 import { RunIdFormatter } from '../run-id.formatter';
@@ -46,6 +47,7 @@ export class RunReportBuilder {
       steps: state.steps.map((step) => RunReportBuilder.step(step, ledger)),
       deferredIssues: state.deferredIssues,
       stoppedReason: state.stoppedReason,
+      diagnosis: RunDiagnosisBuilder.build(state.steps, ledger),
       summary: state.summary,
       metrics: RunReportBuilder.metrics(state, ledger, budget),
     };

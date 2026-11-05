@@ -8,6 +8,9 @@ import type { DeferredIssue } from './step-decision.types';
 // the defect text QA derived from it.
 export interface FailingRunOutput {
   readonly command: string;
+  // The failure summary computed from that run's output when its failures were recognised. It is
+  // shown above the output and is never shortened: it is what makes the output readable.
+  readonly summary: string | null;
   readonly outputTail: string;
 }
 
@@ -21,6 +24,16 @@ export interface ExcerptRange {
 // The lines a range covers, read from disk by code.
 export interface CodeExcerpt extends ExcerptRange {
   readonly code: string;
+}
+
+// What the previous attempt of this same agent left behind when it was stopped before it
+// finished: its edits are already in the workspace, and the next attempt is told what they were
+// instead of being given the brief that ran out of turns.
+export interface PreviousStop {
+  readonly reason: string;
+  readonly toolCalls: number;
+  readonly paths: readonly string[];
+  readonly omittedPaths: number;
 }
 
 export interface PreviousAttemptNote {
@@ -42,6 +55,7 @@ export interface ReworkBriefOmissions {
 // Gathered by code before the brief is assembled. Null and empty mean there was no data, which
 // the assembled brief omits entirely rather than rendering as a heading with nothing under it.
 export interface ReworkBriefFacts {
+  readonly previousStop: PreviousStop | null;
   readonly failingOutput: FailingRunOutput | null;
   readonly referencedCode: readonly CodeExcerpt[];
   readonly diffStat: string | null;
@@ -51,6 +65,9 @@ export interface ReworkBriefFacts {
 // The front-loaded parts of the brief, each absent when it has no data. referencedCode is ordered
 // by issue severity, so dropping from its end drops the least severe excerpt first.
 export interface ReworkBriefExtras {
+  // Never dropped by the budget: an attempt that is not told its own edits are already there
+  // starts by rediscovering them, which is what cost the previous attempt its turns.
+  readonly previousStop?: PreviousStop;
   readonly failingOutput?: FailingRunOutput;
   readonly referencedCode?: readonly CodeExcerpt[];
   readonly diffStat?: string;
@@ -77,6 +94,9 @@ export interface ExcerptGroup {
 // it: the Developer is never asked for any of it.
 export interface ReworkBriefFactsRequest {
   readonly baseRef: string;
+  // Recorded by the executor when the previous call of this agent was stopped, so the collector
+  // only passes it on: nothing here asks an agent what happened to it.
+  readonly previousStop: PreviousStop | null;
   readonly blockingIssues: readonly ReviewIssue[];
   readonly commandRuns: readonly CommandRunRecord[];
   readonly testScript: string | null;
@@ -89,6 +109,7 @@ export interface ReworkBriefFactsRequest {
 // Working state while the budget decides what fits. Mutable on purpose: the budget shrinks it
 // step by step and then assembles the immutable extras from what is left.
 export interface ReworkBriefDraft {
+  readonly previousStop: PreviousStop | null;
   readonly diffStat: string | null;
   failingOutput: FailingRunOutput | null;
   referencedCode: CodeExcerpt[];

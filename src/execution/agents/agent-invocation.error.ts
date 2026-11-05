@@ -40,6 +40,6 @@ export class AgentInvocationError extends Error {
   }
 
   static nothingSpent(): PartialInvocation {
-    return { usage: EMPTY_USAGE, changes: [], commandRuns: [] };
+    return { usage: EMPTY_USAGE, changes: [], commandRuns: [], toolCalls: 0, repeatedCalls: [] };
   }
 }

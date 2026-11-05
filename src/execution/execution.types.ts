@@ -1,3 +1,5 @@
+import type { RepeatedToolCall } from '../workspace/activity/tool-call.types';
+import type { TestFailureReport } from '../workspace/commands/failures/test-failure.types';
 import type { AgentRole } from '../agents/agent-role.enum';
 import type { CompletedStepSummary, PlanStepContext } from '../agents/context/step-context.types';
 import type { DeveloperReport, TokenMetrics } from '../agents/developer/developer-report.types';
@@ -45,6 +47,9 @@ export interface AgentCallRecord {
   readonly commandRuns: number;
   readonly durationMs: number;
   readonly failure: AgentFailureKind | null;
+  // The calls this one repeated with identical arguments, so a run that spent its turns in a
+  // loop can be reported as one.
+  readonly repeatedCalls: readonly RepeatedToolCall[];
 }
 
 export interface AttemptOutcome {
@@ -56,6 +61,9 @@ export interface AttemptOutcome {
   // Set when the code, not the Orchestrator, ended the attempt: no file changed, the agent ran
   // out of turns, or it never produced a valid answer.
   readonly note: string | null;
+  // The causes of the last full-suite run of this attempt that did not succeed, grouped when the
+  // run was recorded. Null when every full-suite run of the attempt passed, or none was made.
+  readonly failureReport: TestFailureReport | null;
   readonly tokens: number;
   readonly durationMs: number;
 }

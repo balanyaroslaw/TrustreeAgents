@@ -2,6 +2,7 @@ import type { AgentRole } from '../agents/agent-role.enum';
 import type { StepDecisionKind } from '../agents/orchestrator/decide/step-decision.enum';
 import type { OrchestratorTask } from '../agents/orchestrator/orchestrator-task.enum';
 import type { RunPlanStep } from '../agents/orchestrator/plan/run-plan.types';
+import type { RunDiagnosis } from '../execution/diagnosis/run-diagnosis.types';
 import type { RunStatus } from '../execution/run-status.enum';
 import type { AgentEventKind } from './agent-event-kind.enum';
 
@@ -89,6 +90,13 @@ export interface BudgetUpdatedEvent extends RunEventBase {
   readonly limit: number;
 }
 
+// Why a run that did not complete did not complete, computed by the executor from what the run
+// recorded. The listener renders it; the core knows nothing about who listens.
+export interface RunDiagnosedEvent extends RunEventBase {
+  readonly kind: AgentEventKind.RunDiagnosed;
+  readonly diagnosis: RunDiagnosis;
+}
+
 export interface RunFinishedEvent extends RunEventBase {
   readonly kind: AgentEventKind.RunFinished;
   readonly status: RunStatus;
@@ -145,6 +153,7 @@ export type AgentEvent =
   | StepAcceptedEvent
   | StepFailedEvent
   | BudgetUpdatedEvent
+  | RunDiagnosedEvent
   | RunFinishedEvent
   | AgentStartedEvent
   | ToolCalledEvent

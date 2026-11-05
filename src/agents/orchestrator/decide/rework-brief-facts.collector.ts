@@ -31,6 +31,7 @@ export class ReworkBriefFactsCollector {
 
   async collect(request: ReworkBriefFactsRequest): Promise<ReworkBriefFacts> {
     return {
+      previousStop: request.previousStop,
       failingOutput: FailingRunSelector.select(
         request.commandRuns,
         request.testScript,

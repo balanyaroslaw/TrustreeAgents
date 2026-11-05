@@ -19,6 +19,7 @@ import { ReviewDimension } from '../../agents/reviewer/review-dimension.enum';
 import { ChangeAction } from '../../workspace/activity/change-action.enum';
 import type { TrackedChange } from '../../workspace/activity/tracked-change.types';
 import type { CommandRunRecord } from '../../workspace/commands/command-run.types';
+import { TestRunKind } from '../../workspace/commands/test-run-kind.enum';
 import { AtomicFileWriter } from '../../workspace/io/atomic-file.writer';
 import { WorkspaceService } from '../../workspace/workspace.service';
 import type { AgentInvocation, AgentUsage } from './agent-invocation.types';
@@ -195,6 +196,9 @@ export class CannedAgentInvoker implements AgentInvoker, AgentInvokerFactory {
         durationMs: CANNED_DURATION_MS,
         outputTail: CANNED_TEST_OUTPUT_TAIL,
         sequence: CANNED_RUN_SEQUENCE,
+        testRunKind: TestRunKind.FullSuite,
+        // The canned suite passes, so there is nothing to analyse and no summary to show.
+        failureReport: null,
       },
     ];
 
@@ -320,6 +324,7 @@ export class CannedAgentInvoker implements AgentInvoker, AgentInvokerFactory {
       changes,
       commandRuns,
       readPaths,
+      repeatedCalls: [],
     };
   }
 }

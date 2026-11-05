@@ -19,6 +19,7 @@ const SINGLE_ITEM = 1;
 export class ReworkBriefBudget {
   static fit(coreLength: number, facts: ReworkBriefFacts): ReworkBriefExtras {
     const draft: ReworkBriefDraft = {
+      previousStop: facts.previousStop,
       diffStat: facts.diffStat,
       failingOutput: facts.failingOutput,
       referencedCode: [...facts.referencedCode],
@@ -57,16 +58,27 @@ export class ReworkBriefBudget {
 
   private static shrinkFailingOutput(coreLength: number, draft: ReworkBriefDraft): void {
     while (draft.failingOutput !== null && !ReworkBriefBudget.fits(coreLength, draft)) {
-      const { command, outputTail } = draft.failingOutput;
+      const { command, summary, outputTail } = draft.failingOutput;
       const over = ReworkBriefBudget.length(coreLength, draft) - MAX_REWORK_BRIEF_CHARACTERS;
       const keep = outputTail.length - Math.max(over, MIN_SHRINK_CHARACTERS);
       if (keep <= NONE) {
+        // The computed summary is what makes the output usable, so it is the last part to go:
+        // the raw tail is dropped first and the summary alone stays while it fits.
+        if (summary !== null && outputTail !== '') {
+          draft.failingOutput = { command, summary, outputTail: '' };
+          draft.failingOutputTrimmed = true;
+          continue;
+        }
         draft.failingOutput = null;
         draft.failingOutputTrimmed = false;
         draft.failingOutputDropped = true;
         return;
       }
-      draft.failingOutput = { command, outputTail: FailingRunSelector.tail(outputTail, keep) };
+      draft.failingOutput = {
+        command,
+        summary,
+        outputTail: FailingRunSelector.tail(outputTail, keep),
+      };
       draft.failingOutputTrimmed = true;
     }
   }
@@ -95,6 +107,7 @@ export class ReworkBriefBudget {
 
   private static assemble(draft: ReworkBriefDraft): ReworkBriefExtras {
     return {
+      ...(draft.previousStop === null ? {} : { previousStop: draft.previousStop }),
       ...(draft.diffStat === null ? {} : { diffStat: draft.diffStat }),
       ...(draft.failingOutput === null ? {} : { failingOutput: draft.failingOutput }),
       ...(draft.referencedCode.length === NONE ? {} : { referencedCode: draft.referencedCode }),

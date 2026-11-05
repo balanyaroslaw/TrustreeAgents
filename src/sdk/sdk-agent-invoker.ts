@@ -111,6 +111,7 @@ export class SdkAgentInvoker implements AgentInvoker {
         changes: context.changes(),
         commandRuns: context.commandRuns(),
         readPaths: context.readPaths(),
+        repeatedCalls: context.repeatedCalls(),
       };
     } catch (error) {
       // The cap fired its own abort, so what the SDK threw is that abort: the call is reported
@@ -130,7 +131,13 @@ export class SdkAgentInvoker implements AgentInvoker {
         kind,
         target.role,
         target.task,
-        { usage, changes: context.changes(), commandRuns: context.commandRuns() },
+        {
+          usage,
+          changes: context.changes(),
+          commandRuns: context.commandRuns(),
+          toolCalls: context.toolCalls,
+          repeatedCalls: context.repeatedCalls(),
+        },
         message,
         error,
       );

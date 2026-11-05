@@ -1,5 +1,6 @@
 import type { AgentRunUsage } from '../../agents/developer/developer-report.types';
 import type { TrackedChange } from '../../workspace/activity/tracked-change.types';
+import type { RepeatedToolCall } from '../../workspace/activity/tool-call.types';
 import type { CommandRunRecord } from '../../workspace/commands/command-run.types';
 
 export interface AgentUsage extends AgentRunUsage {
@@ -16,6 +17,9 @@ export interface AgentInvocation<TOutput> {
   readonly changes: readonly TrackedChange[];
   readonly commandRuns: readonly CommandRunRecord[];
   readonly readPaths: readonly string[];
+  // The calls this one made repeatedly with the same arguments, counted by the recorder that
+  // counts the calls themselves.
+  readonly repeatedCalls: readonly RepeatedToolCall[];
 }
 
 // What a failed call still reports, so nothing is lost from the accounting.
@@ -23,6 +27,10 @@ export interface PartialInvocation {
   readonly usage: AgentUsage;
   readonly changes: readonly TrackedChange[];
   readonly commandRuns: readonly CommandRunRecord[];
+  // What the call had done when it was stopped. A call that ran out of turns is exactly the one
+  // whose tool calls have to be reported, so they are carried here rather than counted as none.
+  readonly toolCalls: number;
+  readonly repeatedCalls: readonly RepeatedToolCall[];
 }
 
 // Where a call belongs in the run: the step and attempt it was made for, and the id of the

@@ -1,4 +1,5 @@
 import type { CommandRunRecord } from '../../../workspace/commands/command-run.types';
+import { FailureSummaryBuilder } from '../../../workspace/commands/failures/failure-summary.builder';
 import { TestRunClassifier } from '../../../workspace/commands/test-run.classifier';
 import { TestRunKind } from '../../../workspace/commands/test-run-kind.enum';
 import { MAX_FAILING_OUTPUT_CHARACTERS } from './rework-brief.constants';
@@ -37,6 +38,9 @@ export class FailingRunSelector {
 
     return {
       command: last.command,
+      // The same summary the tool result carried, recorded with the run: the Developer reads the
+      // causes first and the raw tail only if it needs more.
+      summary: last.failureReport === null ? null : FailureSummaryBuilder.build(last.failureReport),
       outputTail: FailingRunSelector.tail(last.outputTail, MAX_FAILING_OUTPUT_CHARACTERS),
     };
   }

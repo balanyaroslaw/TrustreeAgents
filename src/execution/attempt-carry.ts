@@ -25,8 +25,14 @@ export class AttemptCarry {
     this.changedCode = changedCode;
   }
 
-  fromNote(note: string | null, changedCode: readonly ChangedFile[]): void {
-    this.reworkBrief = null;
+  // An attempt the code ended rather than the Orchestrator: there are no findings, but what the
+  // attempt left behind in the workspace is still carried, so the next one continues from it.
+  fromNote(
+    note: string | null,
+    changedCode: readonly ChangedFile[],
+    brief: ReworkBrief | null,
+  ): void {
+    this.reworkBrief = brief;
     this.systemNote = note;
     this.previousDefects = [];
     this.previousIssues = [];

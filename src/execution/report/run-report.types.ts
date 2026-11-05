@@ -3,6 +3,7 @@ import type { RunSummary } from '../../agents/orchestrator/summarize/run-summary
 import type { QaStatus } from '../../agents/qa/qa-status.enum';
 import type { ReviewVerdict } from '../../agents/reviewer/review-verdict.enum';
 import type { AgentFailureKind } from '../agents/agent-failure.enum';
+import type { RunDiagnosis } from '../diagnosis/run-diagnosis.types';
 import type { RunStatus } from '../run-status.enum';
 import type { StepStatus } from '../step-status.enum';
 
@@ -72,6 +73,9 @@ export interface RunReport {
   readonly steps: readonly RunReportStep[];
   readonly deferredIssues: readonly DeferredIssue[];
   readonly stoppedReason: string | null;
+  // Why the run did not complete, computed from the recorded facts. Null for a run that
+  // completed, and for one that failed with nothing recorded to say why.
+  readonly diagnosis: RunDiagnosis | null;
   readonly summary: RunSummary | null;
   readonly metrics: RunReportMetrics;
 }

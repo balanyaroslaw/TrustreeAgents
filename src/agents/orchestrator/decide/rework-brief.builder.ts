@@ -5,6 +5,7 @@ import type { ReviewReport } from '../../reviewer/review-report.types';
 import type { ReviewIssue } from '../../reviewer/review-result.types';
 import { BLOCKING_SEVERITIES } from '../../reviewer/reviewer.constants';
 import { ReworkBriefBudget } from './rework-brief.budget';
+import { ReworkBriefRenderer } from './rework-brief.renderer';
 import {
   DEFERRED_HEADER,
   QA_DEFECTS_HEADER,
@@ -20,6 +21,7 @@ const BULLET = '- ';
 const DETAIL_INDENT = '  ';
 const FIRST_ITEM = 1;
 const EMPTY = 0;
+const NO_CORE = 0;
 
 // The judgement of the Orchestrator comes first, then the findings of QA and the Reviewer exactly
 // as they recorded them: facts are copied, never rephrased. The facts gathered by code are then
@@ -44,6 +46,29 @@ export class ReworkBriefBuilder {
     };
 
     return { ...core, ...ReworkBriefBudget.fit(ReworkBriefBuilder.render(core).length, facts) };
+  }
+
+  // An attempt that was stopped before it finished leaves no findings to rework, but its edits
+  // are in the workspace and its stop was recorded. That much is still a brief: without it the
+  // next attempt is given the same input as the one that ran out of turns.
+  static continuation(facts: ReworkBriefFacts): ReworkBrief | null {
+    const extras = ReworkBriefBudget.fit(NO_CORE, facts);
+    if (ReworkBriefRenderer.render(extras) === '') {
+      return null;
+    }
+
+    return { focus: [], qaDefects: [], reviewIssues: [], deferredIssues: [], ...extras };
+  }
+
+  // Whether the brief carries findings to work on, as opposed to only what code recorded about
+  // the attempt before it.
+  static hasFindings(brief: ReworkBrief): boolean {
+    return (
+      brief.focus.length > EMPTY ||
+      brief.qaDefects.length > EMPTY ||
+      brief.reviewIssues.length > EMPTY ||
+      brief.deferredIssues.length > EMPTY
+    );
   }
 
   // The blocking issues the excerpts are read for: the same list the brief shows, so the Developer

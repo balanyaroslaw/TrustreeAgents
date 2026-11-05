@@ -14,7 +14,9 @@ import { DecisionGuard } from '../agents/orchestrator/decide/decision.guard';
 import { DecisionInputRenderer } from '../agents/orchestrator/decide/decision-input.renderer';
 import type { PreviousAttemptDecision } from '../agents/orchestrator/decide/decision-input.types';
 import { ReworkBriefBuilder } from '../agents/orchestrator/decide/rework-brief.builder';
+import { MAX_PREVIOUS_STOP_PATHS } from '../agents/orchestrator/decide/rework-brief.constants';
 import { ReworkBriefFactsCollector } from '../agents/orchestrator/decide/rework-brief-facts.collector';
+import type { PreviousStop, ReworkBrief } from '../agents/orchestrator/decide/rework-brief.types';
 import { StepDecisionKind } from '../agents/orchestrator/decide/step-decision.enum';
 import type {
   DeferredIssue,
@@ -24,6 +26,8 @@ import { OrchestratorTask } from '../agents/orchestrator/orchestrator-task.enum'
 import { CoverageLevel } from '../agents/qa/coverage-level.enum';
 import { QaReportBuilder } from '../agents/qa/qa-report.builder';
 import { TestFileDiffCollector } from '../agents/qa/test-file-diff.collector';
+import type { CommandRunRecord } from '../workspace/commands/command-run.types';
+import { FullSuiteRunSelector } from '../workspace/commands/failures/full-suite-run.selector';
 import { PackageTestScriptReader } from '../workspace/commands/package-test-script.reader';
 import type { QaReport } from '../agents/qa/qa-report.types';
 import type { QaResult } from '../agents/qa/qa-result.types';
@@ -36,8 +40,10 @@ import { AgentFailurePolicy } from './agents/agent-failure.policy';
 import { AgentInvocationError } from './agents/agent-invocation.error';
 import type { AgentCallScope, AgentInvocation } from './agents/agent-invocation.types';
 import { AttemptCarry } from './attempt-carry';
+import { HostBlockedError } from './diagnosis/host-blocked.error';
 import { AttemptState } from './attempt-state';
 import {
+  AGENT_STOP_LABELS,
   ATTEMPT_REPOSITORY,
   FIRST_ATTEMPT,
   MAX_STEP_ATTEMPTS,
@@ -50,6 +56,7 @@ import type { AttemptRepository } from './persistence/attempt-repository.port.ty
 
 const ENTRY_SEPARATOR = '; ';
 const EMPTY = 0;
+const FIRST_PATH = 0;
 
 // Runs one plan step: Developer, QA and Reviewer in the order of STEP_AGENT_SEQUENCE, then the
 // decision of the Orchestrator, enforced by DecisionGuard, for at most MAX_STEP_ATTEMPTS
@@ -96,7 +103,11 @@ export class StepRunner {
 
       const { guarded } = state;
       if (guarded === null) {
-        carry.fromNote(state.note, state.changedCode);
+        carry.fromNote(
+          state.note,
+          state.changedCode,
+          await this.continuationBrief(context, state, decisions),
+        );
       } else {
         StepRunner.collectDeferred(deferredIssues, guarded.decision.deferredIssues);
         decisions.push(StepRunner.previousDecision(attempt, guarded.decision));
@@ -117,6 +128,7 @@ export class StepRunner {
           // each blocking issue and its own history already in the packet.
           const facts = await this.briefFacts.collect({
             baseRef: context.baseRef,
+            previousStop: state.previousStop,
             blockingIssues: ReworkBriefBuilder.blockingIssues(reviewReport),
             commandRuns: state.commandRuns,
             testScript: state.testScript,
@@ -145,6 +157,27 @@ export class StepRunner {
       ExecutionMessages.attemptLimit(MAX_STEP_ATTEMPTS),
       outcomes,
       deferredIssues,
+    );
+  }
+
+  // What an attempt that never reached a decision still hands on: the edits it left in the
+  // workspace, and the stop that ended it. Without this the next attempt is given exactly the
+  // input of the one that ran out of turns, and runs out of turns in the same way.
+  private async continuationBrief(
+    context: StepRunContext,
+    state: AttemptState,
+    decisions: readonly PreviousAttemptDecision[],
+  ): Promise<ReworkBrief | null> {
+    return ReworkBriefBuilder.continuation(
+      await this.briefFacts.collect({
+        baseRef: context.baseRef,
+        previousStop: state.previousStop,
+        blockingIssues: [],
+        commandRuns: state.commandRuns,
+        testScript: state.testScript,
+        fullSuiteCommand: null,
+        previousDecisions: decisions,
+      }),
     );
   }
 
@@ -373,16 +406,64 @@ export class StepRunner {
     input: string,
     state: AttemptState,
   ): Promise<AgentInvocation<TOutput> | null> {
+    let invocation: AgentInvocation<TOutput> | null = null;
+    let commandRuns: readonly CommandRunRecord[] = [];
+
     try {
-      return await context.caller.agent<TOutput>(role, input, StepRunner.scopeOf(context, state));
+      invocation = await context.caller.agent<TOutput>(
+        role,
+        input,
+        StepRunner.scopeOf(context, state),
+      );
+      commandRuns = invocation.commandRuns;
     } catch (error) {
-      const note =
-        error instanceof AgentInvocationError ? AgentFailurePolicy.reworkNote(error) : null;
+      if (!(error instanceof AgentInvocationError)) {
+        throw error;
+      }
+      const note = AgentFailurePolicy.reworkNote(error);
       if (note === null) {
         throw error;
       }
+      commandRuns = error.partial.commandRuns;
+      if (role === AgentRole.Developer) {
+        // Only this agent's own stop: the next attempt of the Developer continues the edits of
+        // the Developer call that was stopped, not those of some other agent.
+        state.previousStop = StepRunner.stopOf(error);
+      }
       state.skipVerification(note);
+    }
+    // Checked for both outcomes: a call that was stopped halfway may still have made the run
+    // that showed the host problem, and that problem ends the run either way.
+    StepRunner.assertHostNotBlocked(commandRuns);
+
+    return invocation;
+  }
+
+  // What the stopped call had done, read from the recorders of that call: nothing here is asked
+  // of the agent, and a failure kind an attempt cannot absorb never reaches this.
+  private static stopOf(error: AgentInvocationError): PreviousStop | null {
+    const reason = AGENT_STOP_LABELS[error.kind];
+    if (reason === undefined) {
       return null;
+    }
+    const paths = error.partial.changes.map((change) => change.path);
+
+    return {
+      reason,
+      toolCalls: error.partial.toolCalls,
+      paths: paths.slice(FIRST_PATH, MAX_PREVIOUS_STOP_PATHS),
+      omittedPaths: Math.max(EMPTY, paths.length - MAX_PREVIOUS_STOP_PATHS),
+    };
+  }
+
+  // A full-suite run that failed on this machine rather than on the code ends the run here and
+  // now: no rework and no further attempt, because the next one would fail identically and cost
+  // the same tokens. The advice comes from the pattern list that recognised the failure.
+  private static assertHostNotBlocked(runs: readonly CommandRunRecord[]): void {
+    const blocked = FullSuiteRunSelector.firstHostBlocking(runs);
+    const advice = blocked?.failureReport?.hostBlockingAdvice ?? null;
+    if (advice !== null) {
+      throw new HostBlockedError(ExecutionMessages.hostBlocked(advice));
     }
   }
 

@@ -23,6 +23,7 @@ export class ReworkBriefRenderer {
   static render(extras: ReworkBriefExtras): string {
     const omissions = extras.omissions ?? NO_OMISSIONS;
     const sections = [
+      ReworkBriefRenderer.previousStop(extras),
       ReworkBriefRenderer.diffStat(extras),
       ReworkBriefRenderer.failingOutput(extras, omissions),
       ReworkBriefRenderer.referencedCode(extras, omissions),
@@ -30,6 +31,24 @@ export class ReworkBriefRenderer {
     ];
 
     return sections.filter((section) => section !== null).join(SECTION_SEPARATOR);
+  }
+
+  // First, because it changes what the attempt should do before it does anything else: the
+  // edits of the stopped attempt are in the workspace already.
+  private static previousStop(extras: ReworkBriefExtras): string | null {
+    const stop = extras.previousStop;
+    if (stop === undefined) {
+      return null;
+    }
+    const lines = [
+      ReworkBriefMessages.previousStopHeader(stop.reason, stop.toolCalls),
+      ...stop.paths.map(ReworkBriefMessages.previousStopPath),
+    ];
+    if (stop.omittedPaths > NONE) {
+      lines.push(ReworkBriefMessages.morePaths(stop.omittedPaths));
+    }
+
+    return lines.join(LINE_SEPARATOR);
   }
 
   private static diffStat(extras: ReworkBriefExtras): string | null {
@@ -48,10 +67,15 @@ export class ReworkBriefRenderer {
       return omissions.failingOutputDropped ? ReworkBriefMessages.failingOutputDropped() : null;
     }
     const lines = [ReworkBriefMessages.failingRunHeader(run.command)];
+    if (run.summary !== null) {
+      lines.push(run.summary);
+    }
     if (omissions.failingOutputTrimmed) {
       lines.push(ReworkBriefMessages.failingOutputTrimmed());
     }
-    lines.push(run.outputTail);
+    if (run.outputTail !== '') {
+      lines.push(run.outputTail);
+    }
 
     return lines.join(LINE_SEPARATOR);
   }

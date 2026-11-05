@@ -8,12 +8,12 @@ import { AGENT_RETRY_ATTEMPTS, REQUIRED_CALL_TOKEN_RESERVE } from '../execution.
 import type { AgentCallRecord } from '../execution.types';
 import { AgentFailureKind } from './agent-failure.enum';
 import { AgentInvocationError } from './agent-invocation.error';
+import type { RepeatedToolCall } from '../../workspace/activity/tool-call.types';
 import type { AgentCallLedger } from './agent-call.ledger';
 import type { AgentInvocation, AgentCallScope, AgentUsage } from './agent-invocation.types';
 import type { AgentInvokerFactory } from './agent-invoker-factory.port.types';
 
 const FIRST_TRY = 0;
-const NO_TOOL_CALLS = 0;
 
 // One instance per run: it is the only place agent calls happen. Every call is checked against
 // the abort signal and the budget first, given the cap it may spend, charged afterwards, and
@@ -104,6 +104,7 @@ export class AgentCallRunner {
         invocation.commandRuns.length,
         invocation.durationMs,
         null,
+        invocation.repeatedCalls,
       );
       return invocation;
     } catch (error) {
@@ -118,13 +119,16 @@ export class AgentCallRunner {
             cap: tokenCap,
           });
         }
+        // What the call had actually done, not nothing: a call that ran out of turns is the one
+        // whose tool calls the report and the diagnosis have to name.
         this.account(
           origin,
           error.partial.usage,
-          NO_TOOL_CALLS,
+          error.partial.toolCalls,
           error.partial.commandRuns.length,
           Date.now() - started,
           error.kind,
+          error.partial.repeatedCalls,
         );
       }
       throw error;
@@ -138,6 +142,7 @@ export class AgentCallRunner {
     commandRuns: number,
     durationMs: number,
     failure: AgentFailureKind | null,
+    repeatedCalls: readonly RepeatedToolCall[],
   ): void {
     const record: AgentCallRecord = {
       runId: this.runId,
@@ -155,6 +160,7 @@ export class AgentCallRunner {
       commandRuns,
       durationMs,
       failure,
+      repeatedCalls,
     };
     // agent_calls is written by the invoker, which is the only path to a model; the ledger is
     // the in-memory view the report is built from. The events below are emitted here and not in

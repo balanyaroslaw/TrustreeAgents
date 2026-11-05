@@ -4,6 +4,7 @@ import type {
   UnfinishedWork,
 } from '../../agents/orchestrator/summarize/run-summary.types';
 import { DurationFormatter } from '../../agents/utils/duration.formatter';
+import { RunDiagnosisFormatter } from '../diagnosis/run-diagnosis.formatter';
 import {
   AGENT_TABLE_HEADER,
   AGENT_TABLE_RULE,
@@ -37,6 +38,7 @@ import {
   STEP_TABLE_RULE,
   SUMMARY_LABEL,
   TOKENS_LABEL,
+  WHY_IT_FAILED_HEADER,
 } from './run-report.constants';
 import type { RunReport, RunReportCutOffCall, RunReportStep } from './run-report.types';
 
@@ -57,6 +59,7 @@ export class RunReportFormatter {
       [REQUEST_HEADER, report.prompt.trim()].join(SECTION_SEPARATOR),
       RunReportFormatter.plan(report),
       RunReportFormatter.questions(report),
+      RunReportFormatter.whyItFailed(report),
       RunReportFormatter.steps(report),
       RunReportFormatter.deferred(report.deferredIssues),
       RunReportFormatter.overview(report.summary),
@@ -106,6 +109,16 @@ export class RunReportFormatter {
     return [QUESTIONS_HEADER, ...report.questions.map((question) => `${BULLET}${question}`)].join(
       LINE_SEPARATOR,
     );
+  }
+
+  // Before the steps, because it is the first thing a person asks of a run that did not finish.
+  // The same text the terminal printed: both come from RunDiagnosisFormatter.
+  private static whyItFailed(report: RunReport): string | null {
+    const { diagnosis } = report;
+
+    return diagnosis === null
+      ? null
+      : [WHY_IT_FAILED_HEADER, RunDiagnosisFormatter.format(diagnosis)].join(SECTION_SEPARATOR);
   }
 
   private static steps(report: RunReport): string | null {

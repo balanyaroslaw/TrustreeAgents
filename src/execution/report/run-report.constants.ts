@@ -5,6 +5,7 @@ export const REQUEST_HEADER = '## Request';
 export const PLAN_HEADER = '## Plan';
 export const ASSUMPTIONS_HEADER = '### Assumptions';
 export const QUESTIONS_HEADER = '### Open questions';
+export const WHY_IT_FAILED_HEADER = '## Why it failed';
 export const STEPS_HEADER = '## Steps';
 export const DEFERRED_HEADER = '## Deferred findings';
 export const NOT_DONE_HEADER = '## Not done';

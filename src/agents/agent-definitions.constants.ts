@@ -49,6 +49,13 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
         'where the brief is not enough to make the fix.',
       'When an earlier attempt failed, do not repeat its approach. Say in your summary what you ' +
         'did differently.',
+      'When the brief says your previous attempt stopped early, its edits are already in the ' +
+        'workspace. Continue from them: make the smallest change that closes the remaining ' +
+        'issues first, and read other files only when that change needs them.',
+      'A computed failure summary precedes the output of test runs. When it reports one ' +
+        'environment cause for all or most failures, resolve that cause once. Do not edit tests ' +
+        'or product code to work around it, and do not run the suite again before the cause is ' +
+        'changed.',
     ],
     outputFormat: [
       'status: "completed" (task fully done), "partial" (some parts not done) or "blocked" ' +
@@ -138,6 +145,10 @@ export const AGENT_DEFINITIONS: Readonly<Record<DefinedAgentRole, AgentDefinitio
       'On "Error: ..." read the hint and fix the cause; never repeat the same failing call.',
       'Report only what you did; what you could not test goes to notTested. Never claim the ' +
         'suite passed: the system records the real results.',
+      'A computed failure summary precedes the output of test runs. When it reports one ' +
+        'environment cause for all or most failures, resolve that cause once. Do not edit tests ' +
+        'or product code to work around it, and do not run the suite again before the cause is ' +
+        'changed.',
     ],
     outputFormat: [
       'summary: 2-4 sentences: what you verified, whether the notes matched the code, the ' +

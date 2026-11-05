@@ -16,6 +16,7 @@ import {
   USER_PROMPTER,
 } from './execution.constants';
 import { ConsoleUserPrompter } from './interaction/console-user-prompter';
+import { PortPreflight } from './preflight/port.preflight';
 import { PlanExecutor } from './plan-executor';
 import { StepRunner } from './step-runner';
 import { WorkspaceSurveyor } from './workspace.surveyor';
@@ -33,6 +34,7 @@ import { WorkspaceSurveyor } from './workspace.surveyor';
     StepRunner,
     StepCheckpoint,
     WorkspaceSurveyor,
+    PortPreflight,
     TestFileDiffCollector,
     ReferencedCodeReader,
     ReworkBriefFactsCollector,

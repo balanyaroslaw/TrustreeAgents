@@ -7,14 +7,14 @@ import type { CallRecorders } from '../workspace/activity/call-recorders.types';
 import type { TrackedChange } from '../workspace/activity/tracked-change.types';
 import { CommandRunRecorder } from '../workspace/commands/command-run.recorder';
 import type { CommandRunRecord } from '../workspace/commands/command-run.types';
-
-const NO_CALLS = 0;
+import { ToolCallRecorder } from '../workspace/activity/tool-call.recorder';
+import type { RepeatedToolCall } from '../workspace/activity/tool-call.types';
 
 // One instance per agent call, holding that call's recorders and its tool-call counter. Nothing
 // here is shared: two calls running at the same time have two contexts.
 export class AgentCallContext {
   readonly recorders: CallRecorders;
-  private calls = NO_CALLS;
+  private readonly tools = new ToolCallRecorder();
 
   constructor(
     readonly role: AgentRole,
@@ -29,12 +29,17 @@ export class AgentCallContext {
     };
   }
 
-  countToolCall(): void {
-    this.calls += 1;
+  countToolCall(tool: string, input: unknown): void {
+    this.tools.record(tool, input);
   }
 
   get toolCalls(): number {
-    return this.calls;
+    return this.tools.count;
+  }
+
+  // Which calls this one agent call made again and again with the same arguments.
+  repeatedCalls(): readonly RepeatedToolCall[] {
+    return this.tools.repeated();
   }
 
   changes(): readonly TrackedChange[] {
